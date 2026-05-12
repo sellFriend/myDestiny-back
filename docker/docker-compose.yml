@@ -1,0 +1,13 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: my-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: mydestiny
+      MARIADB_USER: user
+      MARIADB_PASSWORD: user1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
