@@ -1,6 +1,6 @@
-package com.sellfriend.global.exception;
+package com.mydestiny.global.exception;
 
-import com.sellfriend.global.response.ApiResponse;
+import com.mydestiny.global.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;

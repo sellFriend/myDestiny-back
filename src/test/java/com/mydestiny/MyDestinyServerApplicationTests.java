@@ -1,10 +1,10 @@
-package com.sellfriend;
+package com.mydestiny;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class SellFriendServerApplicationTests {
+class MyDestinyServerApplicationTests {
 
     @Test
     void contextLoads() {

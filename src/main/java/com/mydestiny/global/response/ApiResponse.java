@@ -1,4 +1,4 @@
-package com.sellfriend.global.response;
+package com.mydestiny.global.response;
 
 public record ApiResponse<T>(boolean success, String message, T data) {
 
