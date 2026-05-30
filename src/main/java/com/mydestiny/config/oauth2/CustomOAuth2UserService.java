@@ -37,10 +37,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String nickname = (profile != null && profile.get("nickname") != null)
                 ? (String) profile.get("nickname")
                 : (email != null ? email.split("@")[0] : kakaoId);
+        String profileImageUrl = (profile != null) ? (String) profile.get("profile_image_url") : null;
 
         User user = userRepository.findByKakaoId(kakaoId)
                 .map(existing -> {
                     existing.updateLastLogin();
+                    if (profileImageUrl != null) existing.updateKakaoProfileImage(profileImageUrl);
                     return userRepository.save(existing);
                 })
                 .orElseGet(() -> userRepository.save(
@@ -48,6 +50,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                                 .kakaoId(kakaoId)
                                 .email(email)
                                 .nickname(nickname)
+                                .kakaoProfileImageUrl(profileImageUrl)
                                 .build()
                 ));
 

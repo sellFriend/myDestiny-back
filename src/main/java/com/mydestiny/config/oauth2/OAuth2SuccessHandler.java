@@ -35,16 +35,21 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String accessToken = jwtTokenProvider.generateAccessToken(userId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
+        String[] profileImageUrl = {null};
         userRepository.findById(userId).ifPresent(user -> {
             user.updateRefreshToken(refreshToken,
                     LocalDateTime.now().plusSeconds(jwtTokenProvider.getRefreshTokenExpirySeconds()));
             userRepository.save(user);
+            profileImageUrl[0] = user.getKakaoProfileImageUrl();
         });
 
-        String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken)
-                .build().toUriString();
+                .queryParam("refreshToken", refreshToken);
+        if (profileImageUrl[0] != null) {
+            builder.queryParam("profileImageUrl", profileImageUrl[0]);
+        }
+        String targetUrl = builder.build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

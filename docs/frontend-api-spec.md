@@ -67,15 +67,17 @@ My Destiny는 **주선자(Registrant)** 가 자신의 지인을 소개팅 후보
 
 ## 2. 인증 흐름
 
-### 소셜 로그인 (Google OAuth2)
+### 소셜 로그인 (카카오 OAuth2)
 
-1. 프론트에서 `GET /oauth2/authorization/google` 로 리다이렉트
+1. 프론트에서 `GET /oauth2/authorization/kakao` 로 리다이렉트
 2. 로그인 완료 후 서버가 아래 URL로 리다이렉트:
    ```
-   {REDIRECT_URI}#accessToken={accessToken}&refreshToken={refreshToken}
+   {REDIRECT_URI}?accessToken={accessToken}&refreshToken={refreshToken}&profileImageUrl={url}
    ```
-   > **주의**: 토큰은 URL **fragment(`#`)** 로 전달됩니다. 서버 로그/히스토리 노출 방지 목적입니다.
-3. 프론트는 fragment를 파싱해 토큰을 저장합니다.
+   > 기본 redirect URI: `http://localhost:3000/oauth2/callback` (환경변수 `FRONTEND_URL`로 변경 가능)  
+   > `profileImageUrl`: 카카오 프로필 사진 URL. 없으면 파라미터 미포함.
+3. 프론트는 쿼리 파라미터를 파싱해 토큰을 저장합니다.
+4. 폼 링크를 통해 진입한 경우: 로그인 완료 후 `profileImageUrl` 존재 시 "카카오 프로필 사진을 폼에 사용할까요?" 팝업 표시.
 
 ### 토큰 사용
 
@@ -91,9 +93,9 @@ Authorization: Bearer {accessToken}
 | `GET /oauth2/**`, `GET /login/**` | OAuth2 로그인 |
 | `POST /api/auth/refresh` | 토큰 갱신 |
 | `GET /api/invitations/{token}` | 초대 링크 정보 조회 |
-| `GET /form/{token}` | 폼 링크 유효성 확인 |
-| `POST /form/{token}` | 폼 제출 |
-| `POST /form/{token}/photos` | 폼 사진 업로드 |
+| `GET /form/{madamId}` | 폼 링크 유효성 확인 |
+
+> `POST /form/{madamId}` (폼 제출)와 `POST /form/{uploadToken}/photos` (사진 업로드)는 **카카오 로그인 후 JWT 필요**.
 
 ### 토큰 갱신
 
@@ -389,7 +391,7 @@ Content-Type: application/json
 
 **Response** `200`
 ```json
-{ "success": true, "message": "OK", "data": null }
+{ "success": true, "message": "OK", "data": null }ㄱ
 ```
 
 ---
@@ -449,52 +451,80 @@ Authorization: Bearer {accessToken}
 
 ### 5.5 지인 프로필 등록 — 폼 (Form)
 
-> 주선자가 지인에게 폼 링크를 전달하면, 지인이 직접 정보를 입력합니다.  
-> 이 엔드포인트들은 **인증 불필요(public)** 입니다.
+> 주선자(마담)가 지인(매물)에게 폼 링크를 전달합니다.  
+> 지인은 **카카오 로그인 후** 직접 자신의 정보를 입력하고 제출합니다.
 
-#### 폼 링크 유효성 확인
+#### 폼 플로우 요약
 
 ```
-GET /form/{token}
-```
-
-**Response** `200`
-```json
-{ "success": true, "message": "유효한 초대 링크입니다.", "data": null }
+1. GET  /form/{madamId}           → 마담 존재 확인 (public)
+2. 카카오 로그인 (/oauth2/authorization/kakao)
+3. 로그인 콜백: profileImageUrl 존재 시 "카카오 사진 사용?" 팝업
+4. POST /form/{madamId}           → 프로필 제출 (JWT 필요)
+5. POST /form/{uploadToken}/photos → 추가 사진 업로드 (JWT 필요, optional)
 ```
 
 ---
 
-#### 폼 제출
+#### 폼 링크 유효성 확인
 
 ```
-POST /form/{token}
+GET /form/{madamId}
+```
+
+> `{madamId}` = 주선자의 userId (영구 고유값, 만료 없음)
+
+**Response** `200`
+```json
+{ "success": true, "message": "유효한 폼 링크입니다.", "data": null }
+```
+
+**Error**
+- `404` 존재하지 않는 마담 ID
+
+---
+
+#### 프로필 제출
+
+```
+POST /form/{madamId}
+Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
 
 **Request Body**
 ```json
 {
+  "useKakaoPhoto": true,
   "name": "김지인",
   "age": 27,
-  "gender": "female",           // "male" | "female" | "other" | null
+  "gender": "female",
   "job": "디자이너",
   "intro": "안녕하세요!",
-  "mbti": "INFJ",               // 대문자 4자리, null 허용
+  "mbti": "INFJ",
   "hobbies": "독서, 요가",
-  "phoneNumber": "01012345678", // 필수
-  "email": "user@example.com",  // 필수
+  "phoneNumber": "01012345678",
   "kakaoId": "kakao_id",
   "instagramId": "insta_id"
 }
 ```
 
-**Validation**
-- `name`: 필수, 최대 50자
-- `age`: 필수, 10~99
-- `phoneNumber`: 필수, 최대 20자
-- `email`: 필수, 이메일 형식, 최대 255자
-- `mbti`: `^[A-Z]{4}$` (대문자 4자리)
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `useKakaoPhoto` | Y | 카카오 프로필 사진을 첫 번째 사진으로 등록할지 여부 |
+| `name` | Y | 최대 50자 |
+| `age` | Y | 10~99 |
+| `gender` | N | `"male"` \| `"female"` \| `"other"` |
+| `phoneNumber` | Y | 최대 20자. **중복 체크 기준** |
+| `mbti` | N | 대문자 4자리 (`^[A-Z]{4}$`) |
+| `job`, `intro`, `hobbies`, `kakaoId`, `instagramId` | N | |
+
+> **이메일**: 카카오 계정 이메일이 자동으로 저장됩니다. 별도 입력 불필요.
+
+**중복 체크**
+- `phoneNumber` + `RegistrationStatus.VERIFIED` 조합으로 검사
+- 이미 다른 마담을 통해 **승인 완료(VERIFIED)** 된 번호면 `409 Conflict`
+- 거절됐거나 승인 대기 중인 경우는 재시도 가능
 
 **Response** `200`
 ```json
@@ -503,19 +533,35 @@ Content-Type: application/json
   "message": "OK",
   "data": {
     "acquaintanceId": "uuid",
+    "uploadToken": "abc123...",
     "status": "verification_pending"
   }
 }
 ```
 
+| 필드 | 설명 |
+|---|---|
+| `acquaintanceId` | 생성된 지인 레코드 ID |
+| `uploadToken` | 추가 사진 업로드용 토큰 (이 제출 건에만 유효) |
+| `status` | 항상 `"verification_pending"` (마담 승인 대기) |
+
+**Error**
+- `401` 로그인 필요
+- `404` 유효하지 않은 madamId
+- `409` 이미 VERIFIED 상태로 등록된 전화번호
+
 ---
 
-#### 폼 사진 업로드
+#### 사진 업로드 (추가)
 
 ```
-POST /form/{token}/photos
+POST /form/{uploadToken}/photos
+Authorization: Bearer {accessToken}
 Content-Type: multipart/form-data
 ```
+
+> `{uploadToken}` = 프로필 제출 응답의 `uploadToken` 값  
+> 최대 5장 (카카오 사진 포함)
 
 **Form Data**
 - `file`: 이미지 파일
@@ -535,12 +581,14 @@ Content-Type: multipart/form-data
 
 > 주선자가 자신의 지인을 관리합니다.
 
-#### 지인 초대 링크 생성 (폼 방식)
+#### 내 폼 링크 조회
 
 ```
-POST /api/acquaintances/invite
+GET /api/acquaintances/my-form
 Authorization: Bearer {accessToken}
 ```
+
+> 마담마다 영구 고유 폼 링크. 만료 없음. 매번 동일한 URL 반환.
 
 **Response** `200`
 ```json
@@ -548,8 +596,7 @@ Authorization: Bearer {accessToken}
   "success": true,
   "message": "OK",
   "data": {
-    "formUrl": "https://app.example.com/form/abc123token",
-    "expiresAt": "2026-06-06T12:00:00"
+    "formUrl": "https://app.example.com/form/{madamUserId}"
   }
 }
 ```
@@ -1294,7 +1341,8 @@ Authorization: Bearer {accessToken}
 
 ### 5.12 전화번호 인증 (Phone Verification)
 
-> 초대 링크를 통한 당사자 인증 흐름에서 사용
+> 초대 링크(Invitation) 흐름에서 당사자(B)가 본인 확인을 위해 사용합니다.  
+> OTP는 기본적으로 SMS로 발송되며, 서버 설정(`SMS_PROVIDER=email`)에 따라 이메일로도 수신할 수 있습니다.
 
 #### OTP 발송
 
@@ -1306,13 +1354,30 @@ Content-Type: application/json
 
 **Request Body**
 ```json
-{ "phoneNumber": "01012345678" }
+{
+  "phone": "01012345678",
+  "invitationToken": "abc123token",
+  "email": "user@example.com"
+}
 ```
+
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `phone` | Y | 당사자 전화번호 (`^0[0-9]{8,10}$`) |
+| `invitationToken` | Y | 초대 링크 토큰 |
+| `email` | N | 이메일로 OTP 수신할 경우 입력 (없으면 SMS 발송) |
+
+> **이메일 OTP 흐름**: `email` 필드를 포함하면 SMS 대신 해당 이메일 주소로 OTP 발송.  
+> 서버 환경변수 `SMS_PROVIDER=email` 설정과 무관하게, 클라이언트에서 `email` 값 유무로 발송 채널 결정.
 
 **Response** `200`
 ```json
 { "success": true, "message": "OTP가 발송됐습니다.", "data": null }
 ```
+
+**제약**
+- OTP 유효시간: **5분**
+- 최대 시도 횟수: **3회** (초과 시 `429 Too Many Requests`)
 
 ---
 
@@ -1327,10 +1392,22 @@ Content-Type: application/json
 **Request Body**
 ```json
 {
-  "phoneNumber": "01012345678",
-  "code": "123456"
+  "phone": "01012345678",
+  "otp": "123456",
+  "invitationToken": "abc123token"
 }
 ```
+
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `phone` | Y | 전화번호 — 주선자가 프로필에 등록한 번호와 일치해야 함 |
+| `otp` | Y | 6자리 인증번호 |
+| `invitationToken` | Y | 초대 링크 토큰 |
+
+**인증 성공 시 처리**
+- 로그인 계정에 전화번호 저장
+- 동일인 감지: 로그인 계정이 주선자(A)와 동일하거나, 전화번호가 A의 번호와 일치하면 `REVIEW_REQUIRED`(관리자 검수 대기)로 전이
+- 그 외: `PENDING_APPROVAL`(주선자 검수 대기)로 전이
 
 **Response** `200`
 ```json
@@ -1339,10 +1416,15 @@ Content-Type: application/json
   "message": "OK",
   "data": {
     "profileId": "uuid",
-    "newStatus": "PENDING_APPROVAL"   // "PENDING_APPROVAL" | "REVIEW_REQUIRED"
+    "newStatus": "PENDING_APPROVAL"
   }
 }
 ```
+
+| `newStatus` 값 | 의미 |
+|---|---|
+| `PENDING_APPROVAL` | 일반 케이스 — 주선자(A) 검수 대기 |
+| `REVIEW_REQUIRED` | 동일인 감지 — 관리자 검수 대기 |
 
 ---
 
@@ -1364,8 +1446,8 @@ Authorization: Bearer {accessToken}
     {
       "id": "uuid",
       "type": "match_request",
-      "matchingId": "uuid",       // 관련 매칭 ID (없으면 null)
-      "consentId": "uuid",        // 관련 동의 ID (없으면 null)
+      "matchingId": "uuid",
+      "consentId": "uuid",
       "isRead": false,
       "createdAt": "2026-05-30T10:00:00"
     }
@@ -1521,11 +1603,15 @@ Authorization: Bearer {accessToken}
 ### A. 지인 등록 (폼 방식)
 
 ```
-1. POST /api/acquaintances/invite          → formUrl 획득
-2. 지인이 GET /form/{token} 로 링크 유효성 확인
-3. 지인이 POST /form/{token} 로 정보 제출
-4. 지인이 POST /form/{token}/photos 로 사진 업로드 (optional)
-5. 주선자가 POST /api/acquaintances/{id}/approve 로 승인
+1. GET  /api/acquaintances/my-form              → 영구 폼 URL 획득 (마담)
+2. 지인이 GET  /form/{madamId}                  → 링크 유효성 확인 (public)
+3. 지인이 카카오 로그인 (/oauth2/authorization/kakao)
+   → 콜백: profileImageUrl 있으면 "카카오 사진 사용?" 팝업 표시
+4. 지인이 POST /form/{madamId}                  → 프로필 제출 (JWT 필요)
+   → { acquaintanceId, uploadToken, status: "verification_pending" }
+5. 지인이 POST /form/{uploadToken}/photos        → 추가 사진 업로드 (optional)
+6. 마담이 GET  /api/acquaintances/{id}           → 제출 내용 확인
+7. 마담이 POST /api/acquaintances/{id}/approve   → 최종 승인
 ```
 
 ### B. 당사자 승인 흐름 (초대 링크)
