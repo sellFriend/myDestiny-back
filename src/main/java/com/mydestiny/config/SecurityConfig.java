@@ -43,9 +43,21 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // API 전용 필터체인 — /api/**, /form/** 경로, STATELESS + JWT
+    // Swagger UI 전용 필터체인
     @Bean
     @Order(2)
+    public SecurityFilterChain swaggerFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        return http.build();
+    }
+
+    // API 전용 필터체인 — /api/**, /form/** 경로, STATELESS + JWT
+    @Bean
+    @Order(3)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/api/**", "/form/**")
