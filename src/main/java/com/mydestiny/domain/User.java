@@ -61,6 +61,9 @@ public class User {
     @Column(name = "phone_verified_at")
     private LocalDateTime phoneVerifiedAt;
 
+    @Column(name = "kakao_profile_image_url", length = 500)
+    private String kakaoProfileImageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -103,5 +106,9 @@ public class User {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateKakaoProfileImage(String url) {
+        this.kakaoProfileImageUrl = url;
     }
 }

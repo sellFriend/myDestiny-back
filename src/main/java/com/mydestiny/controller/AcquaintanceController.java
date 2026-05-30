@@ -16,9 +16,10 @@ public class AcquaintanceController {
 
     private final AcquaintanceService acquaintanceService;
 
-    @PostMapping("/invite")
-    public ResponseEntity<ApiResponse<InviteResponse>> invite(@AuthenticationPrincipal String userId) {
-        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.createInvite(userId)));
+    // 마담 자신의 영구 폼 링크 조회 (없으면 최초 1회 생성)
+    @GetMapping("/my-form")
+    public ResponseEntity<ApiResponse<InviteResponse>> getMyFormLink(@AuthenticationPrincipal String userId) {
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.getFormLink(userId)));
     }
 
     @GetMapping("/{id}")

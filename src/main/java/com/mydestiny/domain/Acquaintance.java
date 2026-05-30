@@ -50,7 +50,7 @@ public class Acquaintance {
     @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phoneNumber;
 
-    @Column(nullable = false)
+    @Column
     private String email;
 
     @Column(name = "kakao_id", length = 100)

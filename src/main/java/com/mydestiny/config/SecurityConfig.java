@@ -66,7 +66,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/form/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/form/**").permitAll()
                 .requestMatchers("/api/auth/refresh").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invitations/**").permitAll()
                 .anyRequest().authenticated())

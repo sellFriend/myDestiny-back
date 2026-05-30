@@ -16,6 +16,10 @@ public interface AcquaintanceRepository extends JpaRepository<Acquaintance, Stri
 
     List<Acquaintance> findByUserIdOrderByCreatedAtDesc(String userId);
 
+    boolean existsByEmailAndRegistrationStatus(String email, RegistrationStatus status);
+
+    boolean existsByPhoneNumberAndRegistrationStatus(String phoneNumber, RegistrationStatus status);
+
     @Query("""
             SELECT a FROM Acquaintance a
             WHERE a.registrationStatus = :status
