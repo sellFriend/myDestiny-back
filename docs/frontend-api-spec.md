@@ -610,6 +610,40 @@ Content-Type: multipart/form-data
 
 > 주선자가 자신의 지인을 관리합니다.
 
+#### 내 지인 목록 조회
+
+```
+GET /api/acquaintances
+Authorization: Bearer {accessToken}
+```
+
+**Response** `200`
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": [
+    {
+      "id": "uuid",
+      "name": "김지인",
+      "age": 27,
+      "gender": "female",
+      "job": "디자이너",
+      "intro": "안녕하세요!",
+      "mbti": "INFJ",
+      "hobbies": "독서, 요가",
+      "registrationStatus": "verification_pending",
+      "verifiedAt": null,
+      "photoUrls": ["https://cdn.example.com/photos/1.jpg"]
+    }
+  ]
+}
+```
+
+> 최신 제출 순으로 정렬됩니다.
+
+---
+
 #### 내 폼 링크 조회
 
 ```
