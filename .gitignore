@@ -35,3 +35,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### docker ###
+docker/data
+
+### Environment ###
+.env
+.env.local
+
+### OMC ###
+.omc/
+docker/.omc/
