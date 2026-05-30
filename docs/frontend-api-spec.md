@@ -796,12 +796,13 @@ Authorization: Bearer {accessToken}
 #### 공개 프로필 목록 조회 (다른 주선자의 프로필 탐색)
 
 ```
-GET /api/profiles/public?registrantId={registrantId}
+GET /api/profiles/public?registrantId={registrantId}&gender={gender}
 Authorization: Bearer {accessToken}
 ```
 
 **Query Parameters**
 - `registrantId` (optional): 특정 주선자의 프로필만 조회
+- `gender` (optional): 성별 필터 — `"male"` \| `"female"` \| `"other"`
 
 **Response** `200`
 ```json

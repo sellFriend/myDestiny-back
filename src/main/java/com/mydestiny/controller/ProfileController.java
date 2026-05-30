@@ -39,8 +39,9 @@ public class ProfileController {
     @GetMapping("/public")
     public ResponseEntity<ApiResponse<List<PublicProfileResponse>>> getPublicProfiles(
             @AuthenticationPrincipal String userId,
-            @RequestParam(required = false) String registrantId) {
-        return ResponseEntity.ok(ApiResponse.ok(profileService.getPublicProfiles(userId, registrantId)));
+            @RequestParam(required = false) String registrantId,
+            @RequestParam(required = false) String gender) {
+        return ResponseEntity.ok(ApiResponse.ok(profileService.getPublicProfiles(userId, registrantId, gender)));
     }
 
     @GetMapping

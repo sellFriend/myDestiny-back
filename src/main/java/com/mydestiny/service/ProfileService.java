@@ -69,14 +69,16 @@ public class ProfileService {
     }
 
     @Transactional(readOnly = true)
-    public List<PublicProfileResponse> getPublicProfiles(String currentUserId, String registrantId) {
+    public List<PublicProfileResponse> getPublicProfiles(String currentUserId, String registrantId, String gender) {
         var mutualFollowIds = followService.getMutualFollowIds(currentUserId);
+        Gender genderFilter = gender != null ? Gender.fromDb(gender) : null;
 
         return profileRepository.findByStatusOrderByPublishedAtDesc(ProfileStatus.PUBLISHED)
                 .stream()
                 .filter(p -> registrantId != null
                         ? p.getRegistrant().getId().equals(registrantId)
                         : !p.getRegistrant().getId().equals(currentUserId))
+                .filter(p -> genderFilter == null || p.getGender() == genderFilter)
                 .filter(p -> switch (p.getVisibility()) {
                     case PUBLIC -> true;
                     case FOLLOWERS_ONLY -> mutualFollowIds.contains(p.getRegistrant().getId());
