@@ -456,12 +456,41 @@ Authorization: Bearer {accessToken}
 
 #### 폼 플로우 요약
 
+**[프론트] 폼 링크 진입**
 ```
-1. GET  /form/{madamId}           → 마담 존재 확인 (public)
-2. 카카오 로그인 (/oauth2/authorization/kakao)
-3. 로그인 콜백: profileImageUrl 존재 시 "카카오 사진 사용?" 팝업
-4. POST /form/{madamId}           → 프로필 제출 (JWT 필요)
-5. POST /form/{uploadToken}/photos → 추가 사진 업로드 (JWT 필요, optional)
+친구가 /form/{madamId} 접속
+  → GET /form/{madamId} 로 마담 존재 확인
+  → 프론트: madamId를 localStorage에 저장
+  → "카카오 로그인" 버튼 노출
+```
+
+**[프론트 → 서버] 카카오 로그인**
+```
+GET /oauth2/authorization/kakao 로 리다이렉트
+  → 카카오 인증 완료
+  → 서버가 /oauth2/callback?accessToken=...&refreshToken=...&profileImageUrl=... 로 리다이렉트
+  → 프론트: 토큰 저장, localStorage에서 madamId 복원
+  → profileImageUrl 존재 시 "카카오 프로필 사진을 사용할까요?" 팝업 표시
+```
+
+**[프론트 → 서버] 프로필 제출**
+```
+친구가 폼 작성 완료
+  → POST /form/{madamId}  (JWT 필요)
+     body: { useKakaoPhoto, name, age, gender, job, intro, mbti, hobbies, phoneNumber, kakaoId, instagramId }
+  → 응답: { acquaintanceId, uploadToken, status: "verification_pending" }
+```
+
+**[프론트 → 서버] 추가 사진 업로드 (선택)**
+```
+  → POST /form/{uploadToken}/photos  (JWT 필요)
+     최대 5장 (카카오 사진 포함)
+```
+
+**[마담] 승인**
+```
+  → GET  /api/acquaintances/{acquaintanceId}       제출 내용 확인
+  → POST /api/acquaintances/{acquaintanceId}/approve 또는 /reject
 ```
 
 ---
