@@ -2,6 +2,7 @@ package com.mydestiny.controller;
 
 import com.mydestiny.dto.acquaintance.AcquaintanceDetailResponse;
 import com.mydestiny.dto.acquaintance.InviteResponse;
+import java.util.List;
 import com.mydestiny.global.response.ApiResponse;
 import com.mydestiny.service.AcquaintanceService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class AcquaintanceController {
 
     private final AcquaintanceService acquaintanceService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<AcquaintanceDetailResponse>>> getMyList(
+            @AuthenticationPrincipal String userId) {
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.getMyAcquaintances(userId)));
+    }
 
     // 마담 자신의 영구 폼 링크 조회 (없으면 최초 1회 생성)
     @GetMapping("/my-form")

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -120,6 +121,13 @@ public class AcquaintanceService {
                 .build());
 
         return url;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AcquaintanceDetailResponse> getMyAcquaintances(String userId) {
+        return acquaintanceRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(AcquaintanceDetailResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
