@@ -4,6 +4,11 @@
 > 대상: 프론트엔드 팀  
 > 백엔드 브랜치: `hs/docker`
 
+**Base URL**
+| 환경 | URL |
+|---|---|
+| 로컬 | `http://localhost:8888/destiny` |
+
 ---
 
 ## 목차
