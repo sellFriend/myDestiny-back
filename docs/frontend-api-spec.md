@@ -396,7 +396,7 @@ Content-Type: application/json
 
 **Response** `200`
 ```json
-{ "success": true, "message": "OK", "data": null }ㄱ
+{ "success": true, "message": "OK", "data": null }
 ```
 
 ---
