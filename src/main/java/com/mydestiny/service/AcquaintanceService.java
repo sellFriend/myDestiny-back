@@ -102,6 +102,8 @@ public class AcquaintanceService {
                     .build());
         }
 
+        notificationService.create(madamId, NotificationType.FORM_SUBMITTED, acquaintance.getId());
+
         return new FormDataResponse(acquaintance.getId(), uploadToken, acquaintance.getRegistrationStatus().getDbValue());
     }
 
