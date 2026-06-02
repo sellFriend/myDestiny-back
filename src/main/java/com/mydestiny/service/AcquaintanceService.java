@@ -57,6 +57,10 @@ public class AcquaintanceService {
     // 친구(매물)가 카카오 로그인 후 프로필 제출
     @Transactional
     public FormDataResponse submitForm(String madamId, String friendUserId, FormDataRequest req) {
+        if (madamId.equals(friendUserId)) {
+            throw new BusinessException("본인을 매물로 등록할 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
+
         User madam = userRepository.findById(madamId)
                 .orElseThrow(() -> new BusinessException("유효하지 않은 폼 링크입니다.", HttpStatus.NOT_FOUND));
 

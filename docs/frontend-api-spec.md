@@ -550,8 +550,9 @@ Content-Type: application/json
 
 > **이메일**: 카카오 계정 이메일이 자동으로 저장됩니다. 별도 입력 불필요.
 
-**중복 체크**
-- `phoneNumber` + `RegistrationStatus.VERIFIED` 조합으로 검사
+**등록 제한**
+- 로그인한 사용자가 마담 본인인 경우(`madamId == 로그인 userId`) → `400 Bad Request`
+- `phoneNumber` + `RegistrationStatus.VERIFIED` 조합으로 중복 검사
 - 이미 다른 마담을 통해 **승인 완료(VERIFIED)** 된 번호면 `409 Conflict`
 - 거절됐거나 승인 대기 중인 경우는 재시도 가능
 
@@ -575,6 +576,7 @@ Content-Type: application/json
 | `status` | 항상 `"verification_pending"` (마담 승인 대기) |
 
 **Error**
+- `400` 본인(마담)을 매물로 등록하려는 경우
 - `401` 로그인 필요
 - `404` 유효하지 않은 madamId
 - `409` 이미 VERIFIED 상태로 등록된 전화번호
