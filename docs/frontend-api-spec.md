@@ -1109,7 +1109,8 @@ Content-Type: application/json
 
 ### 5.9 카드 (Card)
 
-> 주선자가 매칭에 내보낼 지인 카드 목록. (승인된 Acquaintance 기반)
+> **다른 마담의 매물을 탐색하는 API.** `VERIFIED` + `PUBLIC` 상태인 Acquaintance만 노출됩니다.  
+> 본인이 등록한 매물, 차단한 매물은 결과에서 제외됩니다. 순서는 랜덤입니다.
 
 #### 카드 목록 조회
 
@@ -1117,6 +1118,13 @@ Content-Type: application/json
 GET /api/cards
 Authorization: Bearer {accessToken}
 ```
+
+**필터 조건**
+- `RegistrationStatus = VERIFIED` (마담 승인 완료)
+- `Visibility = PUBLIC`
+- 본인(`userId`) 소유 매물 제외
+- 차단한 매물 제외
+- 정렬: 랜덤
 
 **Response** `200`
 ```json
@@ -1163,6 +1171,9 @@ Authorization: Bearer {accessToken}
   }
 }
 ```
+
+**Error**
+- `404` 존재하지 않거나 조회 불가한 카드 (VERIFIED+PUBLIC 아닌 경우 포함)
 
 ---
 
