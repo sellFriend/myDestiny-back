@@ -5,6 +5,7 @@ import jakarta.persistence.Converter;
 
 public enum NotificationType {
     // 기존 타입
+    FORM_SUBMITTED("form_submitted"),                           // 지인이 폼 제출 완료
     MATCH_REQUEST("match_request"),
     MATCH_ACCEPTED("match_accepted"),
     MATCH_REJECTED("match_rejected"),
