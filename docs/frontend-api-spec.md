@@ -69,7 +69,7 @@ My Destiny는 **주선자(Registrant)** 가 자신의 지인을 소개팅 후보
 
 ### 소셜 로그인 (카카오 OAuth2)
 
-1. 프론트에서 `GET /oauth2/authorization/kakao` 로 리다이렉트
+1. 프론트에서 `GET /destiny/oauth2/authorization/kakao` 로 리다이렉트
 2. 로그인 완료 후 서버가 아래 URL로 리다이렉트:
    ```
    {REDIRECT_URI}?accessToken={accessToken}&refreshToken={refreshToken}&profileImageUrl={url}
@@ -90,18 +90,18 @@ Authorization: Bearer {accessToken}
 
 | 경로 | 설명 |
 |------|------|
-| `GET /oauth2/**`, `GET /login/**` | OAuth2 로그인 |
-| `POST /api/auth/refresh` | 토큰 갱신 |
-| `GET /api/invitations/{token}` | 초대 링크 정보 조회 |
-| `GET /form/{madamId}` | 폼 링크 유효성 확인 |
+| `GET /destiny/oauth2/**`, `GET /destiny/login/**` | OAuth2 로그인 |
+| `POST /destiny/api/auth/refresh` | 토큰 갱신 |
+| `GET /destiny/api/invitations/{token}` | 초대 링크 정보 조회 |
+| `GET /destiny/form/{madamId}` | 폼 링크 유효성 확인 |
 
-> `POST /form/{madamId}` (폼 제출)와 `POST /form/{uploadToken}/photos` (사진 업로드)는 **카카오 로그인 후 JWT 필요**.
+> `POST /destiny/form/{madamId}` (폼 제출)와 `POST /destiny/form/{uploadToken}/photos` (사진 업로드)는 **카카오 로그인 후 JWT 필요**.
 
 ### 토큰 갱신
 
 Access Token 만료 시 Refresh Token으로 재발급:
 ```
-POST /api/auth/refresh
+POST /destiny/api/auth/refresh
 X-Refresh-Token: {refreshToken}
 ```
 
@@ -229,7 +229,7 @@ X-Refresh-Token: {refreshToken}
 #### 토큰 갱신
 
 ```
-POST /api/auth/refresh
+POST /destiny/api/auth/refresh
 ```
 
 **Headers**
@@ -254,7 +254,7 @@ X-Refresh-Token: {refreshToken}
 #### 로그아웃
 
 ```
-POST /api/auth/logout
+POST /destiny/api/auth/logout
 Authorization: Bearer {accessToken}
 ```
 
@@ -270,7 +270,7 @@ Authorization: Bearer {accessToken}
 #### 내 정보 조회
 
 ```
-GET /api/users/me
+GET /destiny/api/users/me
 Authorization: Bearer {accessToken}
 ```
 
@@ -295,7 +295,7 @@ Authorization: Bearer {accessToken}
 #### 닉네임 변경
 
 ```
-PATCH /api/users/me/nickname
+PATCH /destiny/api/users/me/nickname
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -319,7 +319,7 @@ Content-Type: application/json
 #### 주선자 목록 조회
 
 ```
-GET /api/registrants
+GET /destiny/api/registrants
 Authorization: Bearer {accessToken}
 ```
 
@@ -346,7 +346,7 @@ Authorization: Bearer {accessToken}
 #### 특정 주선자 조회
 
 ```
-GET /api/registrants/{userId}
+GET /destiny/api/registrants/{userId}
 Authorization: Bearer {accessToken}
 ```
 
@@ -357,7 +357,7 @@ Authorization: Bearer {accessToken}
 #### 주선자의 팔로잉 목록
 
 ```
-GET /api/registrants/{userId}/following
+GET /destiny/api/registrants/{userId}/following
 Authorization: Bearer {accessToken}
 ```
 
@@ -368,7 +368,7 @@ Authorization: Bearer {accessToken}
 #### 주선자의 팔로워 목록
 
 ```
-GET /api/registrants/{userId}/followers
+GET /destiny/api/registrants/{userId}/followers
 Authorization: Bearer {accessToken}
 ```
 
@@ -379,7 +379,7 @@ Authorization: Bearer {accessToken}
 #### 내 소개글(bio) 수정
 
 ```
-PATCH /api/registrants/me/bio
+PATCH /destiny/api/registrants/me/bio
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -401,7 +401,7 @@ Content-Type: application/json
 #### 팔로우
 
 ```
-POST /api/users/{userId}/follow
+POST /destiny/api/users/{userId}/follow
 Authorization: Bearer {accessToken}
 ```
 
@@ -415,7 +415,7 @@ Authorization: Bearer {accessToken}
 #### 언팔로우
 
 ```
-DELETE /api/users/{userId}/follow
+DELETE /destiny/api/users/{userId}/follow
 Authorization: Bearer {accessToken}
 ```
 
@@ -429,7 +429,7 @@ Authorization: Bearer {accessToken}
 #### 팔로우 상태 조회
 
 ```
-GET /api/users/{userId}/follow-status
+GET /destiny/api/users/{userId}/follow-status
 Authorization: Bearer {accessToken}
 ```
 
@@ -458,17 +458,17 @@ Authorization: Bearer {accessToken}
 
 **[프론트] 폼 링크 진입**
 ```
-친구가 /form/{madamId} 접속
-  → GET /form/{madamId} 로 마담 존재 확인
+친구가 /destiny/form/{madamId} 접속
+  → GET /destiny/form/{madamId} 로 마담 존재 확인
   → 프론트: madamId를 localStorage에 저장
   → "카카오 로그인" 버튼 노출
 ```
 
 **[프론트 → 서버] 카카오 로그인**
 ```
-GET /oauth2/authorization/kakao 로 리다이렉트
+GET /destiny/oauth2/authorization/kakao 로 리다이렉트
   → 카카오 인증 완료
-  → 서버가 /oauth2/callback?accessToken=...&refreshToken=...&profileImageUrl=... 로 리다이렉트
+  → 서버가 /destiny/oauth2/callback?accessToken=...&refreshToken=...&profileImageUrl=... 로 리다이렉트
   → 프론트: 토큰 저장, localStorage에서 madamId 복원
   → profileImageUrl 존재 시 "카카오 프로필 사진을 사용할까요?" 팝업 표시
 ```
@@ -476,21 +476,21 @@ GET /oauth2/authorization/kakao 로 리다이렉트
 **[프론트 → 서버] 프로필 제출**
 ```
 친구가 폼 작성 완료
-  → POST /form/{madamId}  (JWT 필요)
+  → POST /destiny/form/{madamId}  (JWT 필요)
      body: { useKakaoPhoto, name, age, gender, job, intro, mbti, hobbies, phoneNumber, kakaoId, instagramId }
   → 응답: { acquaintanceId, uploadToken, status: "verification_pending" }
 ```
 
 **[프론트 → 서버] 추가 사진 업로드 (선택)**
 ```
-  → POST /form/{uploadToken}/photos  (JWT 필요)
+  → POST /destiny/form/{uploadToken}/photos  (JWT 필요)
      최대 5장 (카카오 사진 포함)
 ```
 
 **[마담] 승인**
 ```
-  → GET  /api/acquaintances/{acquaintanceId}       제출 내용 확인
-  → POST /api/acquaintances/{acquaintanceId}/approve 또는 /reject
+  → GET  /destiny/api/acquaintances/{acquaintanceId}       제출 내용 확인
+  → POST /destiny/api/acquaintances/{acquaintanceId}/approve 또는 /reject
 ```
 
 ---
@@ -498,7 +498,7 @@ GET /oauth2/authorization/kakao 로 리다이렉트
 #### 폼 링크 유효성 확인
 
 ```
-GET /form/{madamId}
+GET /destiny/form/{madamId}
 ```
 
 > `{madamId}` = 주선자의 userId (영구 고유값, 만료 없음)
@@ -516,7 +516,7 @@ GET /form/{madamId}
 #### 프로필 제출
 
 ```
-POST /form/{madamId}
+POST /destiny/form/{madamId}
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -586,7 +586,7 @@ Content-Type: application/json
 #### 사진 업로드 (추가)
 
 ```
-POST /form/{uploadToken}/photos
+POST /destiny/form/{uploadToken}/photos
 Authorization: Bearer {accessToken}
 Content-Type: multipart/form-data
 ```
@@ -615,7 +615,7 @@ Content-Type: multipart/form-data
 #### 내 지인 목록 조회
 
 ```
-GET /api/acquaintances
+GET /destiny/api/acquaintances
 Authorization: Bearer {accessToken}
 ```
 
@@ -649,7 +649,7 @@ Authorization: Bearer {accessToken}
 #### 내 폼 링크 조회
 
 ```
-GET /api/acquaintances/my-form
+GET /destiny/api/acquaintances/my-form
 Authorization: Bearer {accessToken}
 ```
 
@@ -671,7 +671,7 @@ Authorization: Bearer {accessToken}
 #### 지인 상세 조회
 
 ```
-GET /api/acquaintances/{id}
+GET /destiny/api/acquaintances/{id}
 Authorization: Bearer {accessToken}
 ```
 
@@ -701,7 +701,7 @@ Authorization: Bearer {accessToken}
 #### 지인 승인 (주선자가 폼 제출된 지인 확인)
 
 ```
-POST /api/acquaintances/{id}/approve
+POST /destiny/api/acquaintances/{id}/approve
 Authorization: Bearer {accessToken}
 ```
 
@@ -715,7 +715,7 @@ Authorization: Bearer {accessToken}
 #### 지인 거절
 
 ```
-POST /api/acquaintances/{id}/reject
+POST /destiny/api/acquaintances/{id}/reject
 Authorization: Bearer {accessToken}
 ```
 
@@ -733,7 +733,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 생성
 
 ```
-POST /api/profiles
+POST /destiny/api/profiles
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -771,7 +771,7 @@ Content-Type: application/json
 #### 내 프로필 목록 조회
 
 ```
-GET /api/profiles
+GET /destiny/api/profiles
 Authorization: Bearer {accessToken}
 ```
 
@@ -798,7 +798,7 @@ Authorization: Bearer {accessToken}
 #### 공개 프로필 목록 조회 (다른 주선자의 프로필 탐색)
 
 ```
-GET /api/profiles/public?registrantId={registrantId}&gender={gender}
+GET /destiny/api/profiles/public?registrantId={registrantId}&gender={gender}
 Authorization: Bearer {accessToken}
 ```
 
@@ -837,7 +837,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 상세 조회
 
 ```
-GET /api/profiles/{id}
+GET /destiny/api/profiles/{id}
 Authorization: Bearer {accessToken}
 ```
 
@@ -876,7 +876,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 수정
 
 ```
-PATCH /api/profiles/{id}
+PATCH /destiny/api/profiles/{id}
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -906,7 +906,7 @@ Content-Type: application/json
 #### 프로필 삭제
 
 ```
-DELETE /api/profiles/{id}
+DELETE /destiny/api/profiles/{id}
 Authorization: Bearer {accessToken}
 ```
 
@@ -920,7 +920,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 사진 업로드
 
 ```
-POST /api/profiles/{id}/photos
+POST /destiny/api/profiles/{id}/photos
 Authorization: Bearer {accessToken}
 Content-Type: multipart/form-data
 ```
@@ -942,7 +942,7 @@ Content-Type: multipart/form-data
 #### 프로필 사진 삭제
 
 ```
-DELETE /api/profiles/{id}/photos/{photoId}
+DELETE /destiny/api/profiles/{id}/photos/{photoId}
 Authorization: Bearer {accessToken}
 ```
 
@@ -956,7 +956,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 공개 범위 변경
 
 ```
-PATCH /api/profiles/{id}/visibility?visibility={value}
+PATCH /destiny/api/profiles/{id}/visibility?visibility={value}
 Authorization: Bearer {accessToken}
 ```
 
@@ -973,7 +973,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 신고
 
 ```
-POST /api/profiles/{id}/reports
+POST /destiny/api/profiles/{id}/reports
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -997,7 +997,7 @@ Content-Type: application/json
 #### 초대 링크 생성 (주선자 A)
 
 ```
-POST /api/profiles/{id}/invite
+POST /destiny/api/profiles/{id}/invite
 Authorization: Bearer {accessToken}
 ```
 
@@ -1018,7 +1018,7 @@ Authorization: Bearer {accessToken}
 #### 초대 링크 정보 조회 (당사자 B — 인증 불필요)
 
 ```
-GET /api/invitations/{token}
+GET /destiny/api/invitations/{token}
 ```
 
 **Response** `200`
@@ -1040,7 +1040,7 @@ GET /api/invitations/{token}
 #### 당사자 본인 프로필 조회 (로그인 + 전화번호 인증 후)
 
 ```
-GET /api/invitations/{token}/profile
+GET /destiny/api/invitations/{token}/profile
 Authorization: Bearer {accessToken}
 ```
 
@@ -1051,7 +1051,7 @@ Authorization: Bearer {accessToken}
 #### 당사자 프로필 수정
 
 ```
-PATCH /api/invitations/{token}/profile
+PATCH /destiny/api/invitations/{token}/profile
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1065,7 +1065,7 @@ Content-Type: application/json
 #### 당사자 개인정보 동의
 
 ```
-POST /api/invitations/{token}/consent
+POST /destiny/api/invitations/{token}/consent
 Authorization: Bearer {accessToken}
 ```
 
@@ -1079,7 +1079,7 @@ Authorization: Bearer {accessToken}
 #### 당사자 승인
 
 ```
-POST /api/invitations/{token}/approve
+POST /destiny/api/invitations/{token}/approve
 Authorization: Bearer {accessToken}
 ```
 
@@ -1090,7 +1090,7 @@ Authorization: Bearer {accessToken}
 #### 당사자 거절
 
 ```
-POST /api/invitations/{token}/reject
+POST /destiny/api/invitations/{token}/reject
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1115,7 +1115,7 @@ Content-Type: application/json
 #### 카드 목록 조회
 
 ```
-GET /api/cards
+GET /destiny/api/cards
 Authorization: Bearer {accessToken}
 ```
 
@@ -1149,7 +1149,7 @@ Authorization: Bearer {accessToken}
 #### 카드 상세 조회
 
 ```
-GET /api/cards/{id}
+GET /destiny/api/cards/{id}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1184,7 +1184,7 @@ Authorization: Bearer {accessToken}
 #### 매칭 요청 생성
 
 ```
-POST /api/matchings
+POST /destiny/api/matchings
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1205,7 +1205,7 @@ Content-Type: application/json
 #### 보낸 매칭 목록
 
 ```
-GET /api/matchings/sent
+GET /destiny/api/matchings/sent
 Authorization: Bearer {accessToken}
 ```
 
@@ -1216,7 +1216,7 @@ Authorization: Bearer {accessToken}
 #### 받은 매칭 목록
 
 ```
-GET /api/matchings/received
+GET /destiny/api/matchings/received
 Authorization: Bearer {accessToken}
 ```
 
@@ -1227,7 +1227,7 @@ Authorization: Bearer {accessToken}
 #### 성사된 매칭 목록
 
 ```
-GET /api/matchings/matched
+GET /destiny/api/matchings/matched
 Authorization: Bearer {accessToken}
 ```
 
@@ -1238,7 +1238,7 @@ Authorization: Bearer {accessToken}
 #### 매칭 상세 조회
 
 ```
-GET /api/matchings/{id}
+GET /destiny/api/matchings/{id}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1276,7 +1276,7 @@ Authorization: Bearer {accessToken}
 #### 매칭 수락 (수신자 C)
 
 ```
-POST /api/matchings/{id}/accept
+POST /destiny/api/matchings/{id}/accept
 Authorization: Bearer {accessToken}
 ```
 
@@ -1287,7 +1287,7 @@ Authorization: Bearer {accessToken}
 #### 매칭 거절 (수신자 C)
 
 ```
-POST /api/matchings/{id}/reject
+POST /destiny/api/matchings/{id}/reject
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1304,7 +1304,7 @@ Content-Type: application/json
 #### 매칭 취소 (요청자 A, PENDING 상태에서만 가능)
 
 ```
-POST /api/matchings/{id}/cancel
+POST /destiny/api/matchings/{id}/cancel
 Authorization: Bearer {accessToken}
 ```
 
@@ -1318,7 +1318,7 @@ Authorization: Bearer {accessToken}
 #### 연락처 조회 (매칭 성사 후)
 
 ```
-GET /api/matchings/{id}/contact
+GET /destiny/api/matchings/{id}/contact
 Authorization: Bearer {accessToken}
 ```
 
@@ -1346,7 +1346,7 @@ Authorization: Bearer {accessToken}
 #### 내 동의 대기 목록 조회
 
 ```
-GET /api/candidate-consents/pending
+GET /destiny/api/candidate-consents/pending
 Authorization: Bearer {accessToken}
 ```
 
@@ -1384,7 +1384,7 @@ Authorization: Bearer {accessToken}
 #### 동의
 
 ```
-POST /api/candidate-consents/{id}/approve
+POST /destiny/api/candidate-consents/{id}/approve
 Authorization: Bearer {accessToken}
 ```
 
@@ -1405,7 +1405,7 @@ Authorization: Bearer {accessToken}
 #### 거절
 
 ```
-POST /api/candidate-consents/{id}/reject
+POST /destiny/api/candidate-consents/{id}/reject
 Authorization: Bearer {accessToken}
 ```
 
@@ -1424,7 +1424,7 @@ Authorization: Bearer {accessToken}
 #### OTP 발송
 
 ```
-POST /api/phone-verifications/send
+POST /destiny/api/phone-verifications/send
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1461,7 +1461,7 @@ Content-Type: application/json
 #### OTP 인증
 
 ```
-POST /api/phone-verifications/verify
+POST /destiny/api/phone-verifications/verify
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1510,7 +1510,7 @@ Content-Type: application/json
 #### 읽지 않은 알림 목록
 
 ```
-GET /api/notifications
+GET /destiny/api/notifications
 Authorization: Bearer {accessToken}
 ```
 
@@ -1537,7 +1537,7 @@ Authorization: Bearer {accessToken}
 #### 알림 읽음 처리
 
 ```
-PATCH /api/notifications/{id}/read
+PATCH /destiny/api/notifications/{id}/read
 Authorization: Bearer {accessToken}
 ```
 
@@ -1553,7 +1553,7 @@ Authorization: Bearer {accessToken}
 #### 지인 차단
 
 ```
-POST /api/blocks
+POST /destiny/api/blocks
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1573,7 +1573,7 @@ Content-Type: application/json
 #### 차단 해제
 
 ```
-DELETE /api/blocks/{acquaintanceId}
+DELETE /destiny/api/blocks/{acquaintanceId}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1591,7 +1591,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 목록 조회 (상태 필터)
 
 ```
-GET /api/admin/profiles?status={ProfileStatus}
+GET /destiny/api/admin/profiles?status={ProfileStatus}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1602,7 +1602,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 숨김 처리
 
 ```
-PATCH /api/admin/profiles/{id}/suspend
+PATCH /destiny/api/admin/profiles/{id}/suspend
 Authorization: Bearer {accessToken}
 ```
 
@@ -1616,7 +1616,7 @@ Authorization: Bearer {accessToken}
 #### 프로필 검수 (승인/거절)
 
 ```
-PATCH /api/admin/profiles/{id}/review
+PATCH /destiny/api/admin/profiles/{id}/review
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1636,7 +1636,7 @@ Content-Type: application/json
 #### 신고 목록 조회
 
 ```
-GET /api/admin/reports?status={status}
+GET /destiny/api/admin/reports?status={status}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1647,7 +1647,7 @@ Authorization: Bearer {accessToken}
 #### 신고 상태 업데이트
 
 ```
-PATCH /api/admin/reports/{id}
+PATCH /destiny/api/admin/reports/{id}
 Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
@@ -1667,7 +1667,7 @@ Content-Type: application/json
 #### 매칭 현황 조회
 
 ```
-GET /api/admin/matchings?status={MatchingStatus}
+GET /destiny/api/admin/matchings?status={MatchingStatus}
 Authorization: Bearer {accessToken}
 ```
 
@@ -1680,37 +1680,37 @@ Authorization: Bearer {accessToken}
 ### A. 지인 등록 (폼 방식)
 
 ```
-1. GET  /api/acquaintances/my-form              → 영구 폼 URL 획득 (마담)
-2. 지인이 GET  /form/{madamId}                  → 링크 유효성 확인 (public)
-3. 지인이 카카오 로그인 (/oauth2/authorization/kakao)
+1. GET  /destiny/api/acquaintances/my-form              → 영구 폼 URL 획득 (마담)
+2. 지인이 GET  /destiny/form/{madamId}                  → 링크 유효성 확인 (public)
+3. 지인이 카카오 로그인 (/destiny/oauth2/authorization/kakao)
    → 콜백: profileImageUrl 있으면 "카카오 사진 사용?" 팝업 표시
-4. 지인이 POST /form/{madamId}                  → 프로필 제출 (JWT 필요)
+4. 지인이 POST /destiny/form/{madamId}                  → 프로필 제출 (JWT 필요)
    → { acquaintanceId, uploadToken, status: "verification_pending" }
-5. 지인이 POST /form/{uploadToken}/photos        → 추가 사진 업로드 (optional)
-6. 마담이 GET  /api/acquaintances/{id}           → 제출 내용 확인
-7. 마담이 POST /api/acquaintances/{id}/approve   → 최종 승인
+5. 지인이 POST /destiny/form/{uploadToken}/photos        → 추가 사진 업로드 (optional)
+6. 마담이 GET  /destiny/api/acquaintances/{id}           → 제출 내용 확인
+7. 마담이 POST /destiny/api/acquaintances/{id}/approve   → 최종 승인
 ```
 
 ### B. 당사자 승인 흐름 (초대 링크)
 
 ```
-1. POST /api/profiles/{id}/invite                    → inviteUrl 획득
-2. 당사자가 GET /api/invitations/{token}             → 프로필 정보 확인 (public)
+1. POST /destiny/api/profiles/{id}/invite                    → inviteUrl 획득
+2. 당사자가 GET /destiny/api/invitations/{token}             → 프로필 정보 확인 (public)
 3. 당사자 로그인 (OAuth2)
-4. POST /api/phone-verifications/send                → OTP 발송
-5. POST /api/phone-verifications/verify              → 본인 인증
-6. GET /api/invitations/{token}/profile              → 내 프로필 확인
-7. PATCH /api/invitations/{token}/profile            → 내용 수정 (optional)
-8. POST /api/invitations/{token}/consent             → 개인정보 동의
-9. POST /api/invitations/{token}/approve             → 최종 승인
+4. POST /destiny/api/phone-verifications/send                → OTP 발송
+5. POST /destiny/api/phone-verifications/verify              → 본인 인증
+6. GET /destiny/api/invitations/{token}/profile              → 내 프로필 확인
+7. PATCH /destiny/api/invitations/{token}/profile            → 내용 수정 (optional)
+8. POST /destiny/api/invitations/{token}/consent             → 개인정보 동의
+9. POST /destiny/api/invitations/{token}/approve             → 최종 승인
 ```
 
 ### C. 매칭 요청 ~ 성사
 
 ```
-1. POST /api/matchings                               → 매칭 요청 (A → C)
-2. POST /api/matchings/{id}/accept                   → C가 수락
-3. GET /api/candidate-consents/pending               → B, D 각자 동의 목록 확인
-4. POST /api/candidate-consents/{id}/approve         → B, D 각자 동의
-5. GET /api/matchings/{id}/contact                   → 매칭 성사 후 연락처 조회
+1. POST /destiny/api/matchings                               → 매칭 요청 (A → C)
+2. POST /destiny/api/matchings/{id}/accept                   → C가 수락
+3. GET /destiny/api/candidate-consents/pending               → B, D 각자 동의 목록 확인
+4. POST /destiny/api/candidate-consents/{id}/approve         → B, D 각자 동의
+5. GET /destiny/api/matchings/{id}/contact                   → 매칭 성사 후 연락처 조회
 ```
