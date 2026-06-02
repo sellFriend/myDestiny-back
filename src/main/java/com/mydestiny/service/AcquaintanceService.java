@@ -131,7 +131,7 @@ public class AcquaintanceService {
 
     @Transactional(readOnly = true)
     public List<AcquaintanceDetailResponse> getMyAcquaintances(String userId) {
-        return acquaintanceRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return acquaintanceRepository.findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
                 .map(AcquaintanceDetailResponse::from)
                 .toList();
     }
