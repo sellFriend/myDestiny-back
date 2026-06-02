@@ -14,7 +14,7 @@ public interface AcquaintanceRepository extends JpaRepository<Acquaintance, Stri
 
     Optional<Acquaintance> findByVerificationToken(String token);
 
-    List<Acquaintance> findByUserIdOrderByCreatedAtDesc(String userId);
+    List<Acquaintance> findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(String userId);
 
     boolean existsByEmailAndRegistrationStatus(String email, RegistrationStatus status);
 

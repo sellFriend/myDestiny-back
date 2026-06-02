@@ -111,6 +111,6 @@ public class Acquaintance {
     }
 
     public void reject() {
-        this.registrationStatus = RegistrationStatus.DRAFT;
+        this.deletedAt = LocalDateTime.now();
     }
 }
