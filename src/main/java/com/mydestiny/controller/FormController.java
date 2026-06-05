@@ -2,6 +2,7 @@ package com.mydestiny.controller;
 
 import com.mydestiny.dto.acquaintance.FormDataRequest;
 import com.mydestiny.dto.acquaintance.FormDataResponse;
+import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.response.ApiResponse;
 import com.mydestiny.service.AcquaintanceService;
 import jakarta.validation.Valid;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/form")
@@ -35,12 +38,26 @@ public class FormController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    // 사진 목록 조회 — 교체(PUT) 전 photoId 확인용 (인증 필요)
+    @GetMapping("/{uploadToken}/photos")
+    public ResponseEntity<ApiResponse<List<PhotoResponse>>> getPhotos(@PathVariable String uploadToken) {
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.getPhotos(uploadToken)));
+    }
+
     // 사진 업로드 — submitForm 응답의 uploadToken 사용 (인증 필요)
     @PostMapping("/{uploadToken}/photos")
-    public ResponseEntity<ApiResponse<String>> uploadPhoto(
+    public ResponseEntity<ApiResponse<PhotoResponse>> uploadPhoto(
             @PathVariable String uploadToken,
             @RequestParam("file") MultipartFile file) {
-        String url = acquaintanceService.uploadPhoto(uploadToken, file);
-        return ResponseEntity.ok(ApiResponse.ok(url));
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.uploadPhoto(uploadToken, file)));
+    }
+
+    // 사진 교체 — 기존 파일을 삭제하고 새 파일로 대체 (인증 필요)
+    @PutMapping("/{uploadToken}/photos/{photoId}")
+    public ResponseEntity<ApiResponse<PhotoResponse>> replacePhoto(
+            @PathVariable String uploadToken,
+            @PathVariable String photoId,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.replacePhoto(uploadToken, photoId, file)));
     }
 }
