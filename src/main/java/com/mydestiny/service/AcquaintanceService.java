@@ -10,6 +10,7 @@ import com.mydestiny.dto.acquaintance.AcquaintanceDetailResponse;
 import com.mydestiny.dto.acquaintance.FormDataRequest;
 import com.mydestiny.dto.acquaintance.FormDataResponse;
 import com.mydestiny.dto.acquaintance.InviteResponse;
+import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.exception.BusinessException;
 import com.mydestiny.repository.AcquaintancePhotoRepository;
 import com.mydestiny.repository.AcquaintanceRepository;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -107,11 +109,23 @@ public class AcquaintanceService {
         return new FormDataResponse(acquaintance.getId(), uploadToken, acquaintance.getRegistrationStatus().getDbValue());
     }
 
+    private static final Set<String> ALLOWED_IMAGE_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
+
+    // 폼 사진 목록 조회 — uploadToken 으로 현재 등록된 사진과 photoId 확인
+    @Transactional(readOnly = true)
+    public List<PhotoResponse> getPhotos(String uploadToken) {
+        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
+        return acquaintancePhotoRepository.findByAcquaintanceIdOrderByDisplayOrder(acquaintance.getId()).stream()
+                .map(PhotoResponse::from)
+                .toList();
+    }
+
     // 폼 제출 후 사진 추가 업로드 — submitForm 응답의 uploadToken 사용
     @Transactional
-    public String uploadPhoto(String uploadToken, MultipartFile file) {
-        Acquaintance acquaintance = acquaintanceRepository.findByVerificationToken(uploadToken)
-                .orElseThrow(() -> new BusinessException("유효하지 않은 업로드 토큰입니다.", HttpStatus.NOT_FOUND));
+    public PhotoResponse uploadPhoto(String uploadToken, MultipartFile file) {
+        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
+        validateImageType(file);
 
         int count = acquaintancePhotoRepository.countByAcquaintanceId(acquaintance.getId());
         if (count >= 5) {
@@ -120,13 +134,43 @@ public class AcquaintanceService {
 
         String url = objectStorageService.upload(file, "acquaintances/" + acquaintance.getId());
 
-        acquaintancePhotoRepository.save(AcquaintancePhoto.builder()
+        AcquaintancePhoto photo = acquaintancePhotoRepository.save(AcquaintancePhoto.builder()
                 .acquaintance(acquaintance)
                 .imageUrl(url)
                 .displayOrder(count)
                 .build());
 
-        return url;
+        return PhotoResponse.from(photo);
+    }
+
+    // 폼 사진 교체 — 기존 파일을 스토리지에서 삭제하고 새 파일로 대체
+    @Transactional
+    public PhotoResponse replacePhoto(String uploadToken, String photoId, MultipartFile file) {
+        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
+        validateImageType(file);
+
+        AcquaintancePhoto photo = acquaintancePhotoRepository.findById(photoId)
+                .orElseThrow(() -> new BusinessException("사진을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+        if (!photo.getAcquaintance().getId().equals(acquaintance.getId())) {
+            throw new BusinessException("해당 사진에 대한 권한이 없습니다.", HttpStatus.FORBIDDEN);
+        }
+
+        objectStorageService.delete(photo.getImageUrl());
+        String url = objectStorageService.upload(file, "acquaintances/" + acquaintance.getId());
+        photo.changeImageUrl(url);
+
+        return PhotoResponse.from(acquaintancePhotoRepository.save(photo));
+    }
+
+    private Acquaintance findAcquaintanceByToken(String uploadToken) {
+        return acquaintanceRepository.findByVerificationToken(uploadToken)
+                .orElseThrow(() -> new BusinessException("유효하지 않은 업로드 토큰입니다.", HttpStatus.NOT_FOUND));
+    }
+
+    private void validateImageType(MultipartFile file) {
+        if (file == null || file.isEmpty() || !ALLOWED_IMAGE_TYPES.contains(file.getContentType())) {
+            throw new BusinessException("허용되지 않는 이미지 형식입니다.", HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Transactional(readOnly = true)

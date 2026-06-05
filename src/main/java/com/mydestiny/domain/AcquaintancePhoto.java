@@ -36,4 +36,8 @@ public class AcquaintancePhoto {
         if (id == null) id = UUID.randomUUID().toString();
         createdAt = LocalDateTime.now();
     }
+
+    public void changeImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
 }
