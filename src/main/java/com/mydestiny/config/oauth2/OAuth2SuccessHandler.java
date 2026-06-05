@@ -52,7 +52,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(targetRedirectUri)
                 .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken);
+                .queryParam("refreshToken", refreshToken)
+                .queryParam("userId", userId);
         if (profileImageUrl[0] != null) {
             builder.queryParam("profileImageUrl", profileImageUrl[0]);
         }
