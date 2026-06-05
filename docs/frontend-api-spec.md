@@ -77,9 +77,10 @@ My Destiny는 **주선자(Registrant)** 가 자신의 지인을 소개팅 후보
 1. 프론트에서 `GET /destiny/oauth2/authorization/kakao` 로 리다이렉트
 2. 로그인 완료 후 서버가 아래 URL로 리다이렉트:
    ```
-   {REDIRECT_URI}?accessToken={accessToken}&refreshToken={refreshToken}&profileImageUrl={url}
+   {REDIRECT_URI}?accessToken={accessToken}&refreshToken={refreshToken}&userId={userId}&profileImageUrl={url}
    ```
    > 기본 redirect URI: `http://localhost:3000/oauth2/callback` (환경변수 `FRONTEND_URL`로 변경 가능)  
+   > `userId`: 로그인한 사용자의 식별자(UUID). 항상 포함.  
    > `profileImageUrl`: 카카오 프로필 사진 URL. 없으면 파라미터 미포함.
 3. 프론트는 쿼리 파라미터를 파싱해 토큰을 저장합니다.
 4. 폼 링크를 통해 진입한 경우: 로그인 완료 후 `profileImageUrl` 존재 시 "카카오 프로필 사진을 폼에 사용할까요?" 팝업 표시.
@@ -473,7 +474,7 @@ Authorization: Bearer {accessToken}
 ```
 GET /destiny/oauth2/authorization/kakao 로 리다이렉트
   → 카카오 인증 완료
-  → 서버가 /destiny/oauth2/callback?accessToken=...&refreshToken=...&profileImageUrl=... 로 리다이렉트
+  → 서버가 /destiny/oauth2/callback?accessToken=...&refreshToken=...&userId=...&profileImageUrl=... 로 리다이렉트
   → 프론트: 토큰 저장, localStorage에서 madamId 복원
   → profileImageUrl 존재 시 "카카오 프로필 사진을 사용할까요?" 팝업 표시
 ```
