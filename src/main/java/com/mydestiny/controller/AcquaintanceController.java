@@ -25,8 +25,10 @@ public class AcquaintanceController {
 
     // 마담 자신의 영구 폼 링크 조회 (없으면 최초 1회 생성)
     @GetMapping("/my-form")
-    public ResponseEntity<ApiResponse<InviteResponse>> getMyFormLink(@AuthenticationPrincipal String userId) {
-        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.getFormLink(userId)));
+    public ResponseEntity<ApiResponse<InviteResponse>> getMyFormLink(
+            @AuthenticationPrincipal String userId,
+            @RequestHeader(value = "Origin", required = false) String origin) {
+        return ResponseEntity.ok(ApiResponse.ok(acquaintanceService.getFormLink(userId, origin)));
     }
 
     @GetMapping("/{id}")
