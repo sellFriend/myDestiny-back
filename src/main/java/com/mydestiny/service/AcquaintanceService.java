@@ -40,13 +40,25 @@ public class AcquaintanceService {
     @Value("${app.form.base-url:http://localhost:3000/form}")
     private String formBaseUrl;
 
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    private List<String> allowedOrigins;
+
     // 마담 자신의 영구 폼 링크 반환
+    // 요청 Origin 이 허용 목록에 있으면 그 도메인 기준으로, 아니면 설정값으로 링크 생성
     @Transactional(readOnly = true)
-    public InviteResponse getFormLink(String userId) {
+    public InviteResponse getFormLink(String userId, String requestOrigin) {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
         }
-        return new InviteResponse(formBaseUrl + "/" + userId);
+        return new InviteResponse(resolveFormBaseUrl(requestOrigin) + "/" + userId);
+    }
+
+    private String resolveFormBaseUrl(String requestOrigin) {
+        if (requestOrigin != null && !requestOrigin.isBlank()
+                && allowedOrigins.contains(requestOrigin)) {
+            return requestOrigin + "/form";
+        }
+        return formBaseUrl;
     }
 
     // 친구가 폼 진입 시 — 마담 존재 검증 + 본인의 기존 작성분 있으면 prefill 데이터 반환
