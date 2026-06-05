@@ -4,6 +4,7 @@ import com.mydestiny.config.jwt.JwtTokenProvider;
 import com.mydestiny.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -14,6 +15,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +25,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final UserRepository userRepository;
 
     @Value("${app.oauth2.redirect-uri:http://localhost:3000/oauth2/callback}")
-    private String redirectUri;
+    private String defaultRedirectUri;
+
+    @Value("${app.oauth2.allowed-redirect-uris:http://localhost:3000,http://localhost:5173}")
+    private List<String> allowedRedirectUris;
 
     @Override
     @Transactional
@@ -43,7 +48,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             profileImageUrl[0] = user.getKakaoProfileImageUrl();
         });
 
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectUri)
+        String targetRedirectUri = resolveRedirectUri(request);
+
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(targetRedirectUri)
                 .queryParam("accessToken", accessToken)
                 .queryParam("refreshToken", refreshToken);
         if (profileImageUrl[0] != null) {
@@ -52,5 +59,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String targetUrl = builder.build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    private String resolveRedirectUri(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) return defaultRedirectUri;
+
+        String uri = (String) session.getAttribute(CustomOAuth2AuthorizationRequestResolver.SESSION_ATTR_REDIRECT_URI);
+        session.removeAttribute(CustomOAuth2AuthorizationRequestResolver.SESSION_ATTR_REDIRECT_URI);
+
+        if (uri == null || uri.isBlank()) return defaultRedirectUri;
+
+        boolean allowed = allowedRedirectUris.stream().anyMatch(uri::startsWith);
+        return allowed ? uri : defaultRedirectUri;
     }
 }
