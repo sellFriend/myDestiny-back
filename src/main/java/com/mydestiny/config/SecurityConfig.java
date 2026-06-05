@@ -1,6 +1,7 @@
 package com.mydestiny.config;
 
 import com.mydestiny.config.jwt.JwtAuthenticationFilter;
+import com.mydestiny.config.oauth2.CustomOAuth2AuthorizationRequestResolver;
 import com.mydestiny.config.oauth2.CustomOAuth2UserService;
 import com.mydestiny.config.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final CustomOAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
@@ -37,6 +39,8 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
             .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(endpoint -> endpoint
+                    .authorizationRequestResolver(authorizationRequestResolver))
                 .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
                 .successHandler(oAuth2SuccessHandler));
 
