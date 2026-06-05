@@ -358,6 +358,7 @@ CREATE TABLE notifications (
     id            CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id       CHAR(36) NOT NULL,
     type          ENUM(
+        'form_submitted',
         'match_request',
         'match_accepted',
         'match_rejected',
@@ -381,9 +382,8 @@ CREATE TABLE notifications (
         FOREIGN KEY (user_id) REFERENCES users(id)
             ON DELETE CASCADE ON UPDATE CASCADE,
 
-    CONSTRAINT fk_notifications_matching
-        FOREIGN KEY (matching_id) REFERENCES matchings(id)
-            ON DELETE SET NULL ON UPDATE CASCADE,
+    -- matching_id 는 FK 없음: form_submitted / verification_done / acquaintance_blocked
+    -- 알림에서 이 컬럼을 재사용해 acquaintanceId 를 담기 때문 (matchings FK 불가)
 
     INDEX idx_user_unread (user_id, is_read, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
