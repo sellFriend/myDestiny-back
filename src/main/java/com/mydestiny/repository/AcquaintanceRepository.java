@@ -22,6 +22,12 @@ public interface AcquaintanceRepository extends JpaRepository<Acquaintance, Stri
 
     boolean existsByPhoneNumberAndRegistrationStatus(String phoneNumber, RegistrationStatus status);
 
+    // 해당 유저가 마담으로서 등록한 카드가 있는지 — 주선자 여부 판단
+    boolean existsByUserIdAndDeletedAtIsNull(String userId);
+
+    // 해당 유저가 어떤 마담의 지인으로든 이미 등록됐는지
+    boolean existsByFriendUserIdAndDeletedAtIsNull(String friendUserId);
+
     @Query("""
             SELECT a FROM Acquaintance a
             WHERE a.registrationStatus = :status

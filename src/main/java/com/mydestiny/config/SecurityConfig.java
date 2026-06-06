@@ -25,6 +25,7 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final CustomOAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AcquaintanceStatusFilter acquaintanceStatusFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     // OAuth2 전용 필터체인 — /oauth2/**, /login/** 경로, 세션 허용 (state 파라미터 저장용)
@@ -80,7 +81,8 @@ public class SecurityConfig {
                     res.setContentType("application/json;charset=UTF-8");
                     res.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"로그인이 필요합니다.\"}");
                 }))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(acquaintanceStatusFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
