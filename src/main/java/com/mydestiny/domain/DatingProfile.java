@@ -44,7 +44,7 @@ public class DatingProfile {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    // Gender.GenderConverter autoApply=true → DB에 "male"/"female"/"other"로 저장
+    // Gender.GenderConverter autoApply=true → DB에 "MALE"/"FEMALE"/"OTHER"로 저장
     private Gender gender;
 
     @Column
