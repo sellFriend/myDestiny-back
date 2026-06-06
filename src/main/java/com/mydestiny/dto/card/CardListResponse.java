@@ -1,10 +1,9 @@
 package com.mydestiny.dto.card;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.AcquaintancePhoto;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.ProfilePhoto;
 
 import java.util.Comparator;
-import java.util.List;
 
 public record CardListResponse(
         String id,
@@ -14,18 +13,18 @@ public record CardListResponse(
         String mbti,
         String thumbnail
 ) {
-    public static CardListResponse from(Acquaintance a) {
+    public static CardListResponse from(DatingProfile p) {
         String thumbnail = null;
-        if (a.getPhotos() != null && !a.getPhotos().isEmpty()) {
-            thumbnail = a.getPhotos().stream()
-                    .min(Comparator.comparingInt(AcquaintancePhoto::getDisplayOrder))
-                    .map(AcquaintancePhoto::getImageUrl)
+        if (p.getPhotos() != null && !p.getPhotos().isEmpty()) {
+            thumbnail = p.getPhotos().stream()
+                    .min(Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
+                    .map(ProfilePhoto::getImageUrl)
                     .orElse(null);
         }
         return new CardListResponse(
-                a.getId(), a.getName(), a.getAge(),
-                a.getGender() != null ? a.getGender().getDbValue() : null,
-                a.getMbti(), thumbnail
+                p.getId(), p.getName(), p.getAge(),
+                p.getGender() != null ? p.getGender().getDbValue() : null,
+                p.getMbti(), thumbnail
         );
     }
 }

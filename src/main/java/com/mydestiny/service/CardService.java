@@ -1,12 +1,12 @@
 package com.mydestiny.service;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.enums.RegistrationStatus;
-import com.mydestiny.domain.enums.Visibility;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.enums.ProfileStatus;
+import com.mydestiny.domain.enums.ProfileVisibility;
 import com.mydestiny.dto.card.CardDetailResponse;
 import com.mydestiny.dto.card.CardListResponse;
 import com.mydestiny.global.exception.BusinessException;
-import com.mydestiny.repository.AcquaintanceRepository;
+import com.mydestiny.repository.DatingProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,28 +18,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CardService {
 
-    private final AcquaintanceRepository acquaintanceRepository;
+    private final DatingProfileRepository profileRepository;
 
     @Transactional(readOnly = true)
     public List<CardListResponse> getCards(String userId) {
-        return acquaintanceRepository
-                .findAvailableCards(RegistrationStatus.VERIFIED, Visibility.PUBLIC, userId)
+        return profileRepository
+                .findAvailableCards(ProfileStatus.PUBLISHED, ProfileVisibility.PUBLIC, userId)
                 .stream()
                 .map(CardListResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public CardDetailResponse getCardDetail(String acquaintanceId, String userId) {
-        Acquaintance acquaintance = acquaintanceRepository.findById(acquaintanceId)
+    public CardDetailResponse getCardDetail(String profileId, String userId) {
+        DatingProfile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new BusinessException("카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
-        if (acquaintance.getRegistrationStatus() != RegistrationStatus.VERIFIED
-                || acquaintance.getVisibility() != Visibility.PUBLIC
-                || acquaintance.getDeletedAt() != null) {
+        if (profile.getStatus() != ProfileStatus.PUBLISHED
+                || profile.getVisibility() != ProfileVisibility.PUBLIC
+                || profile.getDeletedAt() != null) {
             throw new BusinessException("조회할 수 없는 카드입니다.", HttpStatus.NOT_FOUND);
         }
 
-        return CardDetailResponse.from(acquaintance);
+        return CardDetailResponse.from(profile);
     }
 }

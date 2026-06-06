@@ -92,7 +92,7 @@ Content-Type: multipart/form-data
 |---|---|
 | 허용 타입 | `image/jpeg`, `image/png`, `image/webp`, `image/gif` |
 | 최대 크기 | 10MB (서버 multipart 설정 기준) |
-| 최대 장수 | **5장** (카카오 프로필 사진 포함) |
+| 최대 장수 | **1장** (카카오 프로필 사진 포함) — 추후 여러 장 확장 예정 |
 
 **Response** `200`
 ```json
@@ -108,7 +108,7 @@ Content-Type: multipart/form-data
 ```
 
 **Error**
-- `400` 이미지 파일이 아닌 경우 / 이미 5장인 경우
+- `400` 이미지 파일이 아닌 경우 / 이미 최대 장수(1장)에 도달한 경우
 - `404` 유효하지 않은 uploadToken
 
 ---
@@ -148,24 +148,23 @@ Content-Type: multipart/form-data
 
 ## 사진 등록 결과 — 프로필 응답
 
-마담이 지인 프로필을 조회할 때 사진 URL이 자동으로 포함됩니다.  
-별도 사진 조회 API 호출 불필요.
+마담이 지인 목록(`GET /destiny/api/profiles`)을 조회할 때 사진 URL이 자동으로 포함됩니다.  
+별도 사진 조회 API 호출 불필요. (프로필 상세 `GET /destiny/api/profiles/{id}`도 `photoUrls` 포함)
 
 ```
-GET /destiny/api/acquaintances/{id}
+GET /destiny/api/profiles
 ```
 
 ```json
 {
-  "data": {
+  "data": [{
     "id": "uuid",
     "name": "김지인",
-    ...
+    "...": "...",
     "photoUrls": [
-      "https://cdn.example.com/photos/1.jpg",
-      "https://cdn.example.com/photos/2.jpg"
+      "https://cdn.example.com/photos/1.jpg"
     ]
-  }
+  }]
 }
 ```
 
@@ -179,5 +178,5 @@ GET /destiny/api/acquaintances/{id}
 - [ ] `useKakaoPhoto=true`인 경우 서버가 자동 등록하므로 클라이언트 별도 처리 없음
 - [ ] 사진 선택 시 `POST /photos`로 업로드 → 응답의 `id` 보관
 - [ ] 사진 교체 버튼: `GET /photos`로 목록 조회 후 해당 `id`로 `PUT /photos/{id}` 호출
-- [ ] 5장 초과 시 서버에서 `400` 반환 — UI에서 업로드 버튼 비활성화 권장
+- [ ] 최대 장수(현재 1장) 초과 시 서버에서 `400` 반환 — UI에서 업로드 버튼 비활성화 권장
 - [ ] 허용 확장자 외 파일 선택 시 서버에서 `400` 반환 — `<input accept="image/jpeg,image/png,image/webp,image/gif">` 권장

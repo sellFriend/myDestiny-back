@@ -64,59 +64,6 @@ CREATE TABLE users (
 
 
 -- ============================================================
--- 2. 지인 프로필 (구 시스템)
--- ============================================================
-
-CREATE TABLE acquaintances (
-    id                   CHAR(36)     PRIMARY KEY DEFAULT (UUID()),
-    user_id              CHAR(36)     NOT NULL,
-    friend_user_id       CHAR(36)     NULL,
-    name                 VARCHAR(50)  NOT NULL,
-    age                  INT          NOT NULL,
-    gender               ENUM('male', 'female', 'other'),
-    job                  VARCHAR(100),
-    intro                TEXT,
-    mbti                 VARCHAR(4),
-    hobbies              TEXT,
-    phone_number         VARCHAR(20)  NOT NULL UNIQUE,
-    email                VARCHAR(255) NOT NULL,
-    kakao_id             VARCHAR(100),
-    instagram_id         VARCHAR(100),
-    visibility           ENUM('public', 'private') NOT NULL DEFAULT 'public',
-    registration_status  ENUM('draft', 'verification_pending', 'verified') NOT NULL DEFAULT 'draft',
-    verified_at          DATETIME,
-    verification_token   VARCHAR(64)  UNIQUE,
-    token_expires_at     DATETIME,
-    token_used_at        DATETIME,
-    created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
-                             ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at           DATETIME,
-
-    CONSTRAINT fk_acquaintances_user
-        FOREIGN KEY (user_id) REFERENCES users(id)
-            ON DELETE RESTRICT ON UPDATE CASCADE,
-
-    CONSTRAINT fk_acquaintances_friend_user
-        FOREIGN KEY (friend_user_id) REFERENCES users(id)
-            ON DELETE SET NULL ON UPDATE CASCADE,
-
-    CONSTRAINT chk_acquaintances_age
-        CHECK (age BETWEEN 10 AND 99),
-
-    CONSTRAINT chk_acquaintances_mbti
-        CHECK (mbti IS NULL OR mbti REGEXP '^[A-Z]{4}$'),
-
-    INDEX idx_acquaintances_user_id (user_id),
-    INDEX idx_acquaintances_friend_user_id (friend_user_id),
-    INDEX idx_acquaintances_phone_number (phone_number),
-    INDEX idx_acquaintances_verification_token (verification_token),
-    INDEX idx_listing_query (registration_status, visibility, deleted_at),
-    INDEX idx_acquaintances_mbti (mbti)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
 -- 3. 초대 토큰 (구 시스템)
 -- ============================================================
 
@@ -133,29 +80,6 @@ CREATE TABLE pending_invites (
 
     INDEX idx_pending_invites_token (token),
     INDEX idx_pending_invites_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
--- 4. 지인 사진 (구 시스템)
--- ============================================================
-
-CREATE TABLE acquaintance_photos (
-    id                CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    acquaintance_id   CHAR(36) NOT NULL,
-    image_url         TEXT     NOT NULL,
-    display_order     INT      NOT NULL DEFAULT 0,
-    created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_acquaintance_photos_acquaintance
-        FOREIGN KEY (acquaintance_id) REFERENCES acquaintances(id)
-            ON DELETE CASCADE ON UPDATE CASCADE,
-
-    CONSTRAINT chk_acquaintance_photos_display_order
-        CHECK (display_order BETWEEN 0 AND 4),
-
-    CONSTRAINT uq_acquaintance_photos_order
-        UNIQUE (acquaintance_id, display_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -189,6 +113,8 @@ CREATE TABLE dating_profiles (
     visibility              VARCHAR(20)   NOT NULL DEFAULT 'PUBLIC',
     subject_phone_hash      VARCHAR(128)  NOT NULL                    COMMENT 'Argon2id 해시 (B 번호 일치 검증용)',
     subject_phone_encrypted VARCHAR(256)  NULL                        COMMENT 'AES-256-GCM 암호화 전화번호 (등록자 조회용)',
+    subject_phone_lookup    VARCHAR(64)   NULL                        COMMENT '전화번호 중복검사용 blind index (HMAC-SHA256)',
+    upload_token            VARCHAR(64)   NULL UNIQUE                 COMMENT '주선자 폼 흐름 — 친구 사진 업로드용 토큰',
     is_same_person_detected TINYINT(1)    NOT NULL DEFAULT 0          COMMENT '등록자=승인자 감지 여부',
     consent_agreed_at       DATETIME(6),
     published_at            DATETIME(6),
@@ -201,6 +127,7 @@ CREATE TABLE dating_profiles (
     PRIMARY KEY (id),
     INDEX idx_dp_registrant (registrant_id),
     INDEX idx_dp_status (status),
+    INDEX idx_dp_phone_lookup (subject_phone_lookup),
     CONSTRAINT fk_dp_registrant FOREIGN KEY (registrant_id) REFERENCES users (id),
     CONSTRAINT fk_dp_subject    FOREIGN KEY (subject_id)    REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -411,7 +338,7 @@ CREATE TABLE blocks (
             ON DELETE CASCADE ON UPDATE CASCADE,
 
     CONSTRAINT fk_blocks_blocked_acquaintance
-        FOREIGN KEY (blocked_acquaintance_id) REFERENCES acquaintances(id)
+        FOREIGN KEY (blocked_acquaintance_id) REFERENCES dating_profiles(id)
             ON DELETE CASCADE ON UPDATE CASCADE,
 
     CONSTRAINT uq_blocks_user_acquaintance
@@ -438,29 +365,3 @@ CREATE TABLE follows (
     INDEX idx_follow_follower  (follower_id),
     INDEX idx_follow_following (following_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ============================================================
--- 16. 지인 사진 최대 5장 제한 트리거
--- ============================================================
-
-DELIMITER //
-
-CREATE TRIGGER trg_acquaintance_photos_max_count_before_insert
-    BEFORE INSERT ON acquaintance_photos
-    FOR EACH ROW
-BEGIN
-    DECLARE photo_count INT;
-
-    SELECT COUNT(*)
-    INTO photo_count
-    FROM acquaintance_photos
-    WHERE acquaintance_id = NEW.acquaintance_id;
-
-    IF photo_count >= 5 THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'An acquaintance can have up to 5 photos.';
-    END IF;
-END//
-
-DELIMITER ;

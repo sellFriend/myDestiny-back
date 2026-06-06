@@ -56,12 +56,13 @@ PATCH /api/notifications/{id}/read
 
 ## 2. 폼 승인 / 거절 (마담)
 
-> 지인이 폼 제출 완료(`verification_pending`) 후 마담이 확인하여 승인 또는 거절
+> 지인이 폼 제출 완료(`PENDING_APPROVAL`) 후 마담이 확인하여 승인 또는 거절
+> ⚠️ **2026-06-06 변경**: 경로가 `/api/acquaintances/**` → `/api/profiles/**`로 이전됨.
 
 ### 승인
 
 ```
-POST /api/acquaintances/{id}/approve
+POST /api/profiles/{id}/approve
 ```
 
 **Response** `200`
@@ -69,16 +70,17 @@ POST /api/acquaintances/{id}/approve
 { "success": true, "message": "OK", "data": null }
 ```
 
-- 승인 시 `RegistrationStatus` → `verified`
+- 승인 시 `ProfileStatus` → `PUBLISHED`
 
 **Error**
 - `403` 본인 소유 지인이 아닌 경우
 - `404` 지인을 찾을 수 없는 경우
+- `409` `PENDING_APPROVAL` 상태가 아닌 경우
 
 ### 거절
 
 ```
-POST /api/acquaintances/{id}/reject
+POST /api/profiles/{id}/reject
 ```
 
 **Response** `200`

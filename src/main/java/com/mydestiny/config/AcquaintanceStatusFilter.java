@@ -1,6 +1,7 @@
 package com.mydestiny.config;
 
-import com.mydestiny.repository.AcquaintanceRepository;
+import com.mydestiny.domain.enums.ProfileStatus;
+import com.mydestiny.repository.DatingProfileRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +18,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class AcquaintanceStatusFilter extends OncePerRequestFilter {
 
-    private final AcquaintanceRepository acquaintanceRepository;
+    private final DatingProfileRepository profileRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -36,7 +37,7 @@ public class AcquaintanceStatusFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(userId)) {
+        if (profileRepository.existsBySubjectIdAndStatusNot(userId, ProfileStatus.DELETED)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write(

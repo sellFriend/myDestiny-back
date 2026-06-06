@@ -1,7 +1,7 @@
 package com.mydestiny.dto.card;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.AcquaintancePhoto;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.ProfilePhoto;
 
 import java.util.Comparator;
 import java.util.List;
@@ -17,16 +17,16 @@ public record CardDetailResponse(
         String hobbies,
         List<String> photoUrls
 ) {
-    public static CardDetailResponse from(Acquaintance a) {
-        List<String> photos = a.getPhotos() == null ? List.of() :
-                a.getPhotos().stream()
-                        .sorted(Comparator.comparingInt(AcquaintancePhoto::getDisplayOrder))
-                        .map(AcquaintancePhoto::getImageUrl)
+    public static CardDetailResponse from(DatingProfile p) {
+        List<String> photos = p.getPhotos() == null ? List.of() :
+                p.getPhotos().stream()
+                        .sorted(Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
+                        .map(ProfilePhoto::getImageUrl)
                         .toList();
         return new CardDetailResponse(
-                a.getId(), a.getName(), a.getAge(),
-                a.getGender() != null ? a.getGender().getDbValue() : null,
-                a.getJob(), a.getIntro(), a.getMbti(), a.getHobbies(), photos
+                p.getId(), p.getName(), p.getAge(),
+                p.getGender() != null ? p.getGender().getDbValue() : null,
+                p.getOccupation(), p.getIntroduction(), p.getMbti(), p.getHobby(), photos
         );
     }
 }

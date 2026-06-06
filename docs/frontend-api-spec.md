@@ -200,13 +200,16 @@ X-Refresh-Token: {refreshToken}
 | `REJECTED` | 거절 |
 | `EXPIRED` | 기한 만료 |
 
-### RegistrationStatus (지인 등록 상태)
+### ~~RegistrationStatus (지인 등록 상태)~~ — 폐지, ProfileStatus로 통합
 
-| 값 | 설명 |
-|----|------|
-| `draft` | 폼 미제출 |
-| `verification_pending` | 폼 제출 완료, 주선자 확인 대기 |
-| `verified` | 주선자 확인 완료 |
+> ⚠️ **2026-06-06 변경**: 지인(폼) 시스템이 `dating_profiles`로 통합되면서 별도 `RegistrationStatus`가 사라졌습니다.
+> 폼/지인 관련 모든 응답의 상태값은 이제 **`ProfileStatus`**(위 표)를 사용합니다.
+
+| 구 값 (폐지) | 신 값 (ProfileStatus) | 의미 |
+|----|----|----|
+| `draft` | `DRAFT` | 폼 미제출/수정 대기 |
+| `verification_pending` | `PENDING_APPROVAL` | 폼 제출 완료, 주선자 승인 대기 |
+| `verified` | `PUBLISHED` | 주선자 승인 완료 (카드/매칭 노출) |
 
 ### NotificationType (알림 타입)
 
@@ -484,19 +487,19 @@ GET /destiny/oauth2/authorization/kakao 로 리다이렉트
 친구가 폼 작성 완료
   → POST /destiny/form/{madamId}  (JWT 필요)
      body: { useKakaoPhoto, name, age, gender, job, intro, mbti, hobbies, phoneNumber, kakaoId, instagramId }
-  → 응답: { acquaintanceId, uploadToken, status: "verification_pending" }
+  → 응답: { acquaintanceId, uploadToken, status: "PENDING_APPROVAL" }
 ```
 
 **[프론트 → 서버] 추가 사진 업로드 (선택)**
 ```
   → POST /destiny/form/{uploadToken}/photos  (JWT 필요)
-     최대 5장 (카카오 사진 포함)
+     최대 1장 (카카오 사진 포함)
 ```
 
 **[마담] 승인**
 ```
-  → GET  /destiny/api/acquaintances/{acquaintanceId}       제출 내용 확인
-  → POST /destiny/api/acquaintances/{acquaintanceId}/approve 또는 /reject
+  → GET  /destiny/api/profiles/{acquaintanceId}       제출 내용 확인
+  → POST /destiny/api/profiles/{acquaintanceId}/approve 또는 /reject
 ```
 
 ---
@@ -558,8 +561,8 @@ Content-Type: application/json
 
 **등록 제한**
 - 로그인한 사용자가 마담 본인인 경우(`madamId == 로그인 userId`) → `400 Bad Request`
-- `phoneNumber` + `RegistrationStatus.VERIFIED` 조합으로 중복 검사
-- 이미 다른 마담을 통해 **승인 완료(VERIFIED)** 된 번호면 `409 Conflict`
+- 같은 사용자 계정이 이미 다른 마담의 친구로 등록된 경우 → `409 Conflict`
+- 같은 `phoneNumber`가 이미 **승인 완료(PUBLISHED)** 된 경우 → `409 Conflict` (전화번호 blind index 기준)
 - 거절됐거나 승인 대기 중인 경우는 재시도 가능
 
 **Response** `200`
@@ -570,22 +573,22 @@ Content-Type: application/json
   "data": {
     "acquaintanceId": "uuid",
     "uploadToken": "abc123...",
-    "status": "verification_pending"
+    "status": "PENDING_APPROVAL"
   }
 }
 ```
 
 | 필드 | 설명 |
 |---|---|
-| `acquaintanceId` | 생성된 지인 레코드 ID |
+| `acquaintanceId` | 생성된 프로필 ID (= `dating_profiles.id`) |
 | `uploadToken` | 추가 사진 업로드용 토큰 (이 제출 건에만 유효) |
-| `status` | 항상 `"verification_pending"` (마담 승인 대기) |
+| `status` | 항상 `"PENDING_APPROVAL"` (마담 승인 대기) |
 
 **Error**
 - `400` 본인(마담)을 매물로 등록하려는 경우
 - `401` 로그인 필요
 - `404` 유효하지 않은 madamId
-- `409` 이미 VERIFIED 상태로 등록된 전화번호
+- `409` 이미 등록된 계정이거나, 이미 PUBLISHED 상태로 등록된 전화번호
 
 ---
 
@@ -598,7 +601,7 @@ Content-Type: multipart/form-data
 ```
 
 > `{uploadToken}` = 프로필 제출 응답의 `uploadToken` 값  
-> 최대 5장 (카카오 사진 포함)
+> 최대 1장 (카카오 사진 포함). 추후 여러 장으로 확장 예정.
 
 **Form Data**
 - `file`: 이미지 파일
@@ -616,14 +619,18 @@ Content-Type: multipart/form-data
 
 ### 5.6 지인 관리 (Acquaintance)
 
-> 주선자가 자신의 지인을 관리합니다.
+> 주선자가 자신의 친구(지인)를 관리합니다. **모든 엔드포인트는 `/api/profiles` 하위입니다.**
+>
+> ⚠️ **2026-06-06 변경**: 이 영역의 엔드포인트는 `/api/acquaintances/**` → **`/api/profiles/**`로 이전**됐습니다. (구 경로 제거됨)
 
-#### 내 지인 목록 조회
+#### 내 친구 목록 조회
 
 ```
-GET /destiny/api/acquaintances
+GET /destiny/api/profiles
 Authorization: Bearer {accessToken}
 ```
+
+> 내가 주선자로서 등록한 친구 목록. 최신 제출 순 정렬. (구 `GET /api/acquaintances`)
 
 **Response** `200`
 ```json
@@ -640,7 +647,7 @@ Authorization: Bearer {accessToken}
       "intro": "안녕하세요!",
       "mbti": "INFJ",
       "hobbies": "독서, 요가",
-      "registrationStatus": "verification_pending",
+      "registrationStatus": "PENDING_APPROVAL",
       "verifiedAt": null,
       "photoUrls": ["https://cdn.example.com/photos/1.jpg"]
     }
@@ -648,14 +655,14 @@ Authorization: Bearer {accessToken}
 }
 ```
 
-> 최신 제출 순으로 정렬됩니다.
+> `registrationStatus` 값은 `ProfileStatus` (`DRAFT` | `PENDING_APPROVAL` | `PUBLISHED` 등). `verifiedAt` = 승인(PUBLISHED) 시각.
 
 ---
 
 #### 내 폼 링크 조회
 
 ```
-GET /destiny/api/acquaintances/my-form
+GET /destiny/api/profiles/my-form
 Authorization: Bearer {accessToken}
 ```
 
@@ -674,42 +681,21 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### 지인 상세 조회
+#### 친구 상세 조회
 
-```
-GET /destiny/api/acquaintances/{id}
-Authorization: Bearer {accessToken}
-```
-
-**Response** `200`
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": {
-    "id": "uuid",
-    "name": "김지인",
-    "age": 27,
-    "gender": "female",
-    "job": "디자이너",
-    "intro": "안녕하세요!",
-    "mbti": "INFJ",
-    "hobbies": "독서, 요가",
-    "registrationStatus": "verified",  // "draft" | "verification_pending" | "verified"
-    "verifiedAt": "2026-05-30T10:00:00",
-    "photoUrls": ["https://cdn.example.com/photos/1.jpg"]
-  }
-}
-```
+> `GET /destiny/api/profiles/{id}` 사용 — 응답은 **`ProfileDetailResponse`** ([5.7 프로필 상세 조회](#프로필-상세-조회) 참조).
+> (구 `GET /api/acquaintances/{id}`는 제거됨. 기존 `AcquaintanceDetailResponse` 형태 상세는 더 이상 제공되지 않으며, 목록 응답은 `AcquaintanceDetailResponse` 유지)
 
 ---
 
-#### 지인 승인 (주선자가 폼 제출된 지인 확인)
+#### 친구 승인 (주선자가 폼 제출 확인 → PUBLISHED)
 
 ```
-POST /destiny/api/acquaintances/{id}/approve
+POST /destiny/api/profiles/{id}/approve
 Authorization: Bearer {accessToken}
 ```
+
+> `PENDING_APPROVAL` 상태에서만 가능. 승인 시 `PUBLISHED`가 되어 카드/매칭에 노출. (그 외 상태면 `409`)
 
 **Response** `200`
 ```json
@@ -718,12 +704,30 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### 지인 거절
+#### 친구 거절
 
 ```
-POST /destiny/api/acquaintances/{id}/reject
+POST /destiny/api/profiles/{id}/reject
 Authorization: Bearer {accessToken}
 ```
+
+> soft delete 처리되어 목록에서 사라집니다.
+
+**Response** `200`
+```json
+{ "success": true, "message": "OK", "data": null }
+```
+
+---
+
+#### 친구에게 수정 요청 (PENDING_APPROVAL → DRAFT)
+
+```
+POST /destiny/api/profiles/{id}/request-edit
+Authorization: Bearer {accessToken}
+```
+
+> 승인 대기 카드를 `DRAFT`로 되돌리고 친구에게 알림(`edit_requested`)을 보냅니다. 친구가 폼을 다시 제출하면 `PENDING_APPROVAL`로 복귀. (`PENDING_APPROVAL`이 아니면 `409`)
 
 **Response** `200`
 ```json
@@ -774,30 +778,10 @@ Content-Type: application/json
 
 ---
 
-#### 내 프로필 목록 조회
+#### 내 프로필(친구) 목록 조회
 
-```
-GET /destiny/api/profiles
-Authorization: Bearer {accessToken}
-```
-
-**Response** `200`
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": [
-    {
-      "id": "uuid",
-      "name": "김소개",
-      "status": "PUBLISHED",
-      "visibility": "PUBLIC",
-      "firstPhotoUrl": "https://cdn.example.com/photos/1.jpg",
-      "createdAt": "2026-05-01T10:00:00"
-    }
-  ]
-}
-```
+> `GET /destiny/api/profiles` — [5.6 내 친구 목록 조회](#내-친구-목록-조회) 참조.
+> ⚠️ **2026-06-06 변경**: 응답이 기존 `ProfileSummaryResponse[]`(status/visibility/firstPhotoUrl/createdAt)에서 **`AcquaintanceDetailResponse[]`**(name/age/job/intro/registrationStatus/photoUrls 등)로 바뀌었습니다.
 
 ---
 
@@ -1126,7 +1110,7 @@ Authorization: Bearer {accessToken}
 ```
 
 **필터 조건**
-- `RegistrationStatus = VERIFIED` (마담 승인 완료)
+- `ProfileStatus = PUBLISHED` (마담 승인 완료)
 - `Visibility = PUBLIC`
 - 본인(`userId`) 소유 매물 제외
 - 차단한 매물 제외
@@ -1686,15 +1670,15 @@ Authorization: Bearer {accessToken}
 ### A. 지인 등록 (폼 방식)
 
 ```
-1. GET  /destiny/api/acquaintances/my-form              → 영구 폼 URL 획득 (마담)
+1. GET  /destiny/api/profiles/my-form                   → 영구 폼 URL 획득 (마담)
 2. 지인이 GET  /destiny/form/{madamId}                  → 링크 유효성 확인 (public)
 3. 지인이 카카오 로그인 (/destiny/oauth2/authorization/kakao)
    → 콜백: profileImageUrl 있으면 "카카오 사진 사용?" 팝업 표시
 4. 지인이 POST /destiny/form/{madamId}                  → 프로필 제출 (JWT 필요)
-   → { acquaintanceId, uploadToken, status: "verification_pending" }
-5. 지인이 POST /destiny/form/{uploadToken}/photos        → 추가 사진 업로드 (optional)
-6. 마담이 GET  /destiny/api/acquaintances/{id}           → 제출 내용 확인
-7. 마담이 POST /destiny/api/acquaintances/{id}/approve   → 최종 승인
+   → { acquaintanceId, uploadToken, status: "PENDING_APPROVAL" }
+5. 지인이 POST /destiny/form/{uploadToken}/photos        → 추가 사진 업로드 (optional, 최대 1장)
+6. 마담이 GET  /destiny/api/profiles/{id}               → 제출 내용 확인
+7. 마담이 POST /destiny/api/profiles/{id}/approve       → 최종 승인 (PUBLISHED)
 ```
 
 ### B. 당사자 승인 흐름 (초대 링크)
