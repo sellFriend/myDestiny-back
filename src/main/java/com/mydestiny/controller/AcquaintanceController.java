@@ -51,4 +51,13 @@ public class AcquaintanceController {
         acquaintanceService.reject(id, userId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
+
+    // 주선자가 수정 요청 — 카드 상태를 DRAFT로 되돌리고 친구에게 알림 발송
+    @PostMapping("/{id}/request-edit")
+    public ResponseEntity<ApiResponse<Void>> requestEdit(
+            @PathVariable String id,
+            @AuthenticationPrincipal String userId) {
+        acquaintanceService.requestEdit(id, userId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }

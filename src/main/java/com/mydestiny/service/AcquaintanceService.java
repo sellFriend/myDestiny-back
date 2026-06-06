@@ -9,6 +9,7 @@ import com.mydestiny.domain.enums.RegistrationStatus;
 import com.mydestiny.dto.acquaintance.AcquaintanceDetailResponse;
 import com.mydestiny.dto.acquaintance.FormDataRequest;
 import com.mydestiny.dto.acquaintance.FormDataResponse;
+import com.mydestiny.dto.acquaintance.FormPrefillResponse;
 import com.mydestiny.dto.acquaintance.InviteResponse;
 import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.exception.BusinessException;
@@ -48,15 +49,22 @@ public class AcquaintanceService {
         return new InviteResponse(formBaseUrl + "/" + userId);
     }
 
-    // 친구가 폼 링크 열 때 마담 존재 여부 확인
+    // 친구가 폼 진입 시 — 마담 존재 검증 + 본인의 기존 작성분 있으면 prefill 데이터 반환
     @Transactional(readOnly = true)
-    public void validateToken(String madamId) {
+    public FormPrefillResponse getFormState(String madamId, String friendUserId) {
         if (!userRepository.existsById(madamId)) {
             throw new BusinessException("유효하지 않은 폼 링크입니다.", HttpStatus.NOT_FOUND);
         }
+        if (friendUserId == null || friendUserId.equals(madamId)) {
+            return FormPrefillResponse.empty();
+        }
+        return acquaintanceRepository
+                .findByUserIdAndFriendUserIdAndDeletedAtIsNull(madamId, friendUserId)
+                .map(FormPrefillResponse::of)
+                .orElseGet(FormPrefillResponse::empty);
     }
 
-    // 친구(매물)가 카카오 로그인 후 프로필 제출
+    // 친구(매물)가 카카오 로그인 후 프로필 제출 또는 수정 재제출
     @Transactional
     public FormDataResponse submitForm(String madamId, String friendUserId, FormDataRequest req) {
         if (madamId.equals(friendUserId)) {
@@ -66,20 +74,41 @@ public class AcquaintanceService {
         User madam = userRepository.findById(madamId)
                 .orElseThrow(() -> new BusinessException("유효하지 않은 폼 링크입니다.", HttpStatus.NOT_FOUND));
 
-        // 전화번호 기준 중복 체크 — VERIFIED 상태인 경우만 차단
+        User friend = userRepository.findById(friendUserId)
+                .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+
+        Gender gender = req.gender() != null ? Gender.fromDb(req.gender()) : null;
+
+        // 기존 작성분이 있으면 update — 없으면 신규 create
+        Acquaintance existing = acquaintanceRepository
+                .findByUserIdAndFriendUserIdAndDeletedAtIsNull(madamId, friendUserId)
+                .orElse(null);
+
+        if (existing != null) {
+            if (existing.getRegistrationStatus() == RegistrationStatus.VERIFIED) {
+                throw new BusinessException("이미 등록 완료된 카드입니다.", HttpStatus.CONFLICT);
+            }
+            existing.updateForResubmit(
+                    req.name(), req.age(), gender, req.job(), req.intro(),
+                    req.mbti(), req.hobbies(), req.phoneNumber(), friend.getEmail(),
+                    req.kakaoId(), req.instagramId()
+            );
+            acquaintanceRepository.save(existing);
+            notificationService.create(madamId, NotificationType.FORM_SUBMITTED, existing.getId());
+            return new FormDataResponse(existing.getId(), existing.getVerificationToken(), existing.getRegistrationStatus().getDbValue());
+        }
+
+        // 신규 생성 시에만 전화번호 중복 체크 (다른 마담을 통해 이미 VERIFIED인 번호 차단)
         if (acquaintanceRepository.existsByPhoneNumberAndRegistrationStatus(
                 req.phoneNumber(), RegistrationStatus.VERIFIED)) {
             throw new BusinessException("이미 다른 마담을 통해 등록 완료된 번호입니다.", HttpStatus.CONFLICT);
         }
 
-        User friend = userRepository.findById(friendUserId)
-                .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
-
-        Gender gender = req.gender() != null ? Gender.fromDb(req.gender()) : null;
         String uploadToken = UUID.randomUUID().toString().replace("-", "");
 
         Acquaintance acquaintance = acquaintanceRepository.save(Acquaintance.builder()
                 .user(madam)
+                .friendUser(friend)
                 .name(req.name())
                 .age(req.age())
                 .gender(gender)
@@ -198,6 +227,24 @@ public class AcquaintanceService {
         Acquaintance acquaintance = findOwnedAcquaintance(acquaintanceId, userId);
         acquaintance.reject();
         acquaintanceRepository.save(acquaintance);
+    }
+
+    @Transactional
+    public void requestEdit(String acquaintanceId, String userId) {
+        Acquaintance acquaintance = findOwnedAcquaintance(acquaintanceId, userId);
+        try {
+            acquaintance.requestEdit();
+        } catch (IllegalStateException e) {
+            throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
+        }
+        acquaintanceRepository.save(acquaintance);
+        if (acquaintance.getFriendUser() != null) {
+            notificationService.create(
+                    acquaintance.getFriendUser().getId(),
+                    NotificationType.EDIT_REQUESTED,
+                    acquaintanceId
+            );
+        }
     }
 
     private Acquaintance findOwnedAcquaintance(String acquaintanceId, String userId) {

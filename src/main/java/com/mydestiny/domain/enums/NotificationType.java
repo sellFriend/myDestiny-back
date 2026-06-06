@@ -18,7 +18,8 @@ public enum NotificationType {
     MATCH_CONSENT_REJECTED("match_consent_rejected"),           // 동의 거절로 매칭 실패
     MATCHED("matched"),                                         // 매칭 성사
     MATCH_REQUEST_EXPIRED("match_request_expired"),             // 수신자 응답 기한 만료
-    MATCH_CONSENT_EXPIRED("match_consent_expired");             // 동의 기한 만료
+    MATCH_CONSENT_EXPIRED("match_consent_expired"),             // 동의 기한 만료
+    EDIT_REQUESTED("edit_requested");                           // 주선자가 친구에게 폼 수정 요청
 
     private final String dbValue;
 
