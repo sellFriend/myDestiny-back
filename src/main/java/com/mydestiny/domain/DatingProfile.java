@@ -278,7 +278,8 @@ public class DatingProfile {
     }
 
     // 친구가 폼 재방문 후 수정 제출 — 필드 갱신 + 상태를 다시 승인 대기로 복귀
-    public void resubmitByFriend(String name, Integer age, String gender, String occupation,
+    public void resubmitByFriend(String name, Integer age, String gender,
+                                 boolean isStudent, String schoolName, String major, String occupation,
                                  String introduction, String mbti, String hobby,
                                  String kakaoId, String instagramId,
                                  String subjectPhoneHash, String subjectPhoneEncrypted,
@@ -286,6 +287,9 @@ public class DatingProfile {
         this.name = name;
         this.age = age;
         this.gender = gender != null ? Gender.fromDb(gender) : null;
+        this.isStudent = isStudent;
+        this.schoolName = schoolName;
+        this.major = major;
         this.occupation = occupation;
         this.introduction = introduction;
         this.mbti = mbti;
