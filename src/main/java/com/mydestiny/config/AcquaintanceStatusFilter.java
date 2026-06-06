@@ -23,8 +23,12 @@ public class AcquaintanceStatusFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 폼 경로는 무조건 통과 (폼 작성/수정은 허용)
-        if (request.getRequestURI().startsWith("/form/")) {
+        // context-path(/destiny)를 제외한 실제 경로로 매칭
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+
+        // 폼 경로는 무조건 통과 (폼 작성/수정은 허용).
+        // 본인 기본정보 조회/닉네임 변경(/api/users/me)은 폼 수정 페이지에서 필요하므로 허용.
+        if (path.startsWith("/form/") || path.startsWith("/api/users/me")) {
             filterChain.doFilter(request, response);
             return;
         }
