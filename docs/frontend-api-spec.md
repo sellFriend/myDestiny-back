@@ -28,7 +28,7 @@
    - [초대 링크 — 당사자 승인 흐름 (Invitation)](#58-초대-링크--당사자-승인-흐름-invitation)
    - [카드 (Card)](#59-카드-card)
    - [매칭 (Matching)](#510-매칭-matching)
-   - [당사자 동의 (Candidate Consent)](#511-당사자-동의-candidate-consent)
+   - ~~당사자 동의 (Candidate Consent)~~ — 폐지
    - [전화번호 인증 (Phone Verification)](#512-전화번호-인증-phone-verification)
    - [알림 (Notification)](#513-알림-notification)
    - [차단 (Block)](#514-차단-block)
@@ -59,11 +59,11 @@ My Destiny는 **주선자(Registrant)** 가 자신의 지인을 소개팅 후보
         ↓
 [A] B의 프로필 초대 링크 생성 → [B] 링크로 접근, 개인정보 동의·승인
         ↓
-[A] C의 지인 D와 매칭 요청 → status: PENDING
+[A] C의 지인 D와 매칭 요청 → status: PENDING        (C에게 match_request 알림)
         ↓
-[C] 수락 → status: ACCEPTED_BY_RECEIVER → CONSENT_PENDING
-        ↓
-[B], [D] 각각 최종 동의 → 양쪽 완료 시 status: MATCHED
+[C] 수락 → status: MATCHED (즉시 성사)               (A·C 양쪽에 matched 알림)
+   또는 [C] 거절 → status: REJECTED_BY_RECEIVER       (A에게 match_rejected 알림)
+   또는 [A] 취소 → status: CANCELLED (PENDING 한정)
         ↓
 매칭 성사 → 서로 연락처(카카오ID / 인스타ID) 공개
 ```
@@ -178,27 +178,23 @@ X-Refresh-Token: {refreshToken}
 
 ### MatchingStatus (매칭 상태)
 
+> ℹ️ 수신자(C)가 수락하면 **즉시 `MATCHED`** 가 됩니다. 프론트는 아래 **사용 중** 5개 상태만 다루면 됩니다.
+
 | 값 | 설명 |
 |----|------|
 | `PENDING` | 요청 전송, 수신자 미응답 |
 | `CANCELLED` | 요청자가 취소 |
 | `EXPIRED` | 수신자 응답 기한 초과 |
 | `REJECTED_BY_RECEIVER` | 수신자(C)가 거절 |
-| `ACCEPTED_BY_RECEIVER` | 수신자(C)가 수락 |
-| `CONSENT_PENDING` | 당사자(B, D) 동의 대기 중 |
-| `CONSENT_PARTIALLY_APPROVED` | 한 명만 동의 완료 |
-| `CONSENT_REJECTED` | 당사자 중 한 명 거절 |
-| `CONSENT_EXPIRED` | 당사자 동의 기한 초과 |
-| `MATCHED` | 양쪽 모두 동의, 매칭 성사 |
+| `MATCHED` | 수신자(C) 수락 → 매칭 성사 |
 
-### ConsentStatus (당사자 동의 상태)
+> 아래 상태들은 과거 당사자 동의(2단계) 흐름 잔재로 **현재 사용되지 않습니다** (수락 즉시 성사로 변경).
+> 응답에 등장하지 않으므로 프론트에서 처리할 필요가 없습니다.
+> `ACCEPTED_BY_RECEIVER`, `CONSENT_PENDING`, `CONSENT_PARTIALLY_APPROVED`, `CONSENT_REJECTED`, `CONSENT_EXPIRED`
 
-| 값 | 설명 |
-|----|------|
-| `PENDING` | 동의 대기 |
-| `APPROVED` | 동의 완료 |
-| `REJECTED` | 거절 |
-| `EXPIRED` | 기한 만료 |
+### ~~ConsentStatus (당사자 동의 상태)~~ — 미사용
+
+> 당사자 동의 흐름이 폐지되어 더 이상 노출되지 않습니다. (수락 즉시 성사)
 
 ### ~~RegistrationStatus (지인 등록 상태)~~ — 폐지, ProfileStatus로 통합
 
@@ -213,19 +209,20 @@ X-Refresh-Token: {refreshToken}
 
 ### NotificationType (알림 타입)
 
-| 값 | 설명 |
-|----|------|
-| `match_request` | 매칭 요청 받음 |
-| `match_accepted` | 매칭 수락됨 |
-| `match_rejected` | 매칭 거절됨 |
-| `verification_done` | 지인 본인 인증 완료 |
-| `acquaintance_blocked` | 지인이 차단됨 |
-| `match_consent_requested` | 당사자에게 최종 동의 요청 |
-| `match_counterpart_consented` | 상대방이 동의함 |
-| `match_consent_rejected` | 동의 거절로 매칭 실패 |
-| `matched` | 매칭 성사 |
-| `match_request_expired` | 수신자 응답 기한 만료 |
-| `match_consent_expired` | 당사자 동의 기한 만료 |
+| 값 | 발송 시점 | 받는 사람 |
+|----|-----------|-----------|
+| `match_request` | A가 매칭 요청 생성 | 수신자 C |
+| `matched` | C가 수락 → 즉시 성사 | A·C 양쪽 |
+| `match_rejected` | C가 거절 | 요청자 A |
+| `match_request_expired` | 수신자 응답 기한(72h) 만료 | — |
+| `form_submitted` | 지인이 폼 제출 완료 | 주선자 |
+| `verification_done` | 지인 본인 인증 완료 | — |
+| `edit_requested` | 주선자가 친구에게 폼 수정 요청 | 친구 |
+| `acquaintance_blocked` | 지인이 차단됨 | — |
+
+> 아래 타입은 폐지된 당사자 동의 흐름 잔재로 **현재 발송되지 않습니다**:
+> `match_accepted`, `match_consent_requested`, `match_counterpart_consented`, `match_consent_rejected`, `match_consent_expired`
+> (특히 수락 알림은 `match_accepted`가 아니라 양쪽에 `matched`로 발송됩니다.)
 
 ---
 
@@ -563,7 +560,7 @@ Content-Type: application/json
 - 로그인한 사용자가 마담 본인인 경우(`madamId == 로그인 userId`) → `400 Bad Request`
 - 같은 사용자 계정이 이미 다른 마담의 친구로 등록된 경우 → `409 Conflict`
 - 같은 `phoneNumber`가 이미 **승인 완료(PUBLISHED)** 된 경우 → `409 Conflict` (전화번호 blind index 기준)
-- 거절됐거나 승인 대기 중인 경우는 재시도 가능
+- **재제출(기존 작성분 수정)은 카드가 `DRAFT`(주선자의 수정 요청을 받음) 또는 `PENDING_APPROVAL`(아직 승인 전)일 때만 가능.** 그 외 상태(`PUBLISHED` 등)는 `409 Conflict` — 주선자에게 수정 요청을 받아야 함
 
 **Response** `200`
 ```json
@@ -589,6 +586,7 @@ Content-Type: application/json
 - `401` 로그인 필요
 - `404` 유효하지 않은 madamId
 - `409` 이미 등록된 계정이거나, 이미 PUBLISHED 상태로 등록된 전화번호
+- `409` `주선자에게 폼 수정 요청을 받은 카드만 수정할 수 있습니다.` — 재제출인데 카드가 `DRAFT`/`PENDING_APPROVAL`이 아님
 
 ---
 
@@ -720,14 +718,23 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### 친구에게 수정 요청 (PENDING_APPROVAL → DRAFT)
+#### 친구에게 수정 요청 (PENDING_APPROVAL·PUBLISHED → DRAFT)
 
 ```
 POST /destiny/api/profiles/{id}/request-edit
 Authorization: Bearer {accessToken}
 ```
 
-> 승인 대기 카드를 `DRAFT`로 되돌리고 친구에게 알림(`edit_requested`)을 보냅니다. 친구가 폼을 다시 제출하면 `PENDING_APPROVAL`로 복귀. (`PENDING_APPROVAL`이 아니면 `409`)
+> 승인 대기 또는 공개된 카드를 `DRAFT`로 되돌리고 친구에게 알림(`edit_requested`)을 보냅니다. 친구가 폼을 다시 제출하면 `PENDING_APPROVAL`로 복귀. 친구는 `DRAFT`(=수정 요청을 받은) 또는 `PENDING_APPROVAL`(아직 승인 전) 상태 카드만 재제출할 수 있습니다.
+>
+> **매칭 상태 게이트** — 수정 요청 전 해당 프로필의 매칭을 먼저 정리해야 합니다.
+
+| HTTP | message | 조건 |
+| --- | --- | --- |
+| `409` | `이미 매칭이 진행 중이거나 성사된 프로필은 수정 요청할 수 없습니다.` | 수락/동의 진행 중 또는 `MATCHED` |
+| `409` | `받은 매칭 요청을 모두 거절한 뒤 수정 요청이 가능합니다.` | 받은 `PENDING` 요청 존재 |
+| `409` | `보낸 매칭 요청을 모두 취소한 뒤 수정 요청이 가능합니다.` | 보낸 `PENDING` 요청 존재 |
+| `409` | `승인 대기 또는 공개 상태에서만 수정 요청할 수 있습니다.` | 카드가 `PENDING_APPROVAL`/`PUBLISHED`가 아님 |
 
 **Response** `200`
 ```json
@@ -1170,6 +1177,9 @@ Authorization: Bearer {accessToken}
 ### 5.10 매칭 (Matching)
 
 > 주선자 A가 자신의 지인 B와 다른 주선자 C의 지인 D를 연결하는 요청
+>
+> 📄 보내기·받기 화면 구현은 **[matching-frontend-guide.md](./matching-frontend-guide.md)** 참고 (에러 케이스·타이밍·체크리스트 포함).
+> 수신자 수락 시 **별도 당사자 동의 없이 즉시 `MATCHED`** 가 됩니다.
 
 #### 매칭 요청 생성
 
@@ -1256,7 +1266,7 @@ Authorization: Bearer {accessToken}
     "rejectReason": null,
     "createdAt": "2026-05-30T10:00:00",
     "receiverRespondedAt": null,
-    "receiverExpiresAt": "2026-06-06T10:00:00"
+    "receiverExpiresAt": "2026-06-02T10:00:00"
   }
 }
 ```
@@ -1270,7 +1280,9 @@ POST /destiny/api/matchings/{id}/accept
 Authorization: Bearer {accessToken}
 ```
 
-**Response** `200` — MatchingResponse
+> 수락 즉시 `status: "MATCHED"` 로 성사됩니다. 응답 기한(72h) 초과 후 수락 시 `410 Gone`.
+
+**Response** `200` — MatchingResponse (`status: "MATCHED"`)
 
 ---
 
@@ -1329,80 +1341,12 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 5.11 당사자 동의 (Candidate Consent)
+### ~~5.11 당사자 동의 (Candidate Consent)~~ — 폐지
 
-> 매칭 수락(CONSENT_PENDING) 후 당사자 B, D가 최종 동의하는 단계
-
-#### 내 동의 대기 목록 조회
-
-```
-GET /destiny/api/candidate-consents/pending
-Authorization: Bearer {accessToken}
-```
-
-**Response** `200`
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": [
-    {
-      "id": "uuid",
-      "matchingId": "uuid",
-      "myProfile": {
-        "id": "uuid",
-        "name": "김소개",
-        "gender": "FEMALE"
-      },
-      "counterpartProfile": {
-        "id": "uuid",
-        "name": "이소개",
-        "gender": "MALE"
-      },
-      "requesterNickname": "주선자A닉네임",
-      "receiverNickname": "주선자C닉네임",
-      "status": "PENDING",
-      "expiresAt": "2026-06-06T10:00:00",
-      "createdAt": "2026-05-30T10:00:00"
-    }
-  ]
-}
-```
-
----
-
-#### 동의
-
-```
-POST /destiny/api/candidate-consents/{id}/approve
-Authorization: Bearer {accessToken}
-```
-
-**Response** `200`
-```json
-{
-  "success": true,
-  "message": "OK",
-  "data": {
-    "consentStatus": "APPROVED",
-    "matchingStatus": "MATCHED"   // 또는 "CONSENT_PARTIALLY_APPROVED"
-  }
-}
-```
-
----
-
-#### 거절
-
-```
-POST /destiny/api/candidate-consents/{id}/reject
-Authorization: Bearer {accessToken}
-```
-
-**Response** `200`
-```json
-{ "success": true, "message": "OK", "data": null }
-```
+> ⚠️ **폐지됨**: 매칭 수락 시 당사자(B, D)가 별도로 최종 동의하던 2단계 흐름은 제거되었습니다.
+> 이제 수신자(C)가 `POST /api/matchings/{id}/accept` 하면 **즉시 `MATCHED`** 가 됩니다.
+>
+> `/api/candidate-consents/**` 엔드포인트는 코드상 남아 있으나 진입 경로가 없어 **호출하지 마세요** (대기 목록은 항상 비어 있음). 프론트는 구현하지 않습니다.
 
 ---
 
@@ -1698,9 +1642,7 @@ Authorization: Bearer {accessToken}
 ### C. 매칭 요청 ~ 성사
 
 ```
-1. POST /destiny/api/matchings                               → 매칭 요청 (A → C)
-2. POST /destiny/api/matchings/{id}/accept                   → C가 수락
-3. GET /destiny/api/candidate-consents/pending               → B, D 각자 동의 목록 확인
-4. POST /destiny/api/candidate-consents/{id}/approve         → B, D 각자 동의
-5. GET /destiny/api/matchings/{id}/contact                   → 매칭 성사 후 연락처 조회
+1. POST /destiny/api/matchings                               → 매칭 요청 (A → C), status: PENDING
+2. POST /destiny/api/matchings/{id}/accept                   → C가 수락 → 즉시 status: MATCHED
+3. GET /destiny/api/matchings/{id}/contact                   → 매칭 성사 후 상대 친구 연락처 조회
 ```
