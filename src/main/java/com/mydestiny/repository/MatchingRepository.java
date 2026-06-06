@@ -44,6 +44,11 @@ public interface MatchingRepository extends JpaRepository<Matching, String> {
             @Param("profileId") String profileId,
             @Param("activeStatuses") List<MatchingStatus> activeStatuses);
 
+    // 프로필이 받은(target)/보낸(requester) 특정 상태 요청 존재 여부 (수정 요청 게이트용)
+    boolean existsByTargetProfileIdAndStatus(String targetProfileId, MatchingStatus status);
+
+    boolean existsByRequesterProfileIdAndStatus(String requesterProfileId, MatchingStatus status);
+
     // 동일 프로필 조합에 활성 요청 존재 여부 (V5: 중복 방지)
     @Query("""
             SELECT COUNT(m) > 0 FROM Matching m

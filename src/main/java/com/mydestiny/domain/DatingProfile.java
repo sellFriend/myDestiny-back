@@ -268,10 +268,11 @@ public class DatingProfile {
 
     // === 주선자 폼 흐름 (친구가 본인 정보를 작성, 주선자가 승인) ===
 
-    // 주선자가 수정 요청 — 승인 대기 카드를 DRAFT로 되돌려 친구가 다시 작성하게 함
+    // 주선자가 수정 요청 — 승인 대기/공개된 카드를 DRAFT로 되돌려 친구가 다시 작성하게 함
     public void requestEditByRegistrant() {
-        if (this.status != ProfileStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("승인 대기 상태에서만 수정 요청할 수 있습니다.");
+        if (this.status != ProfileStatus.PENDING_APPROVAL
+                && this.status != ProfileStatus.PUBLISHED) {
+            throw new IllegalStateException("승인 대기 또는 공개 상태에서만 수정 요청할 수 있습니다.");
         }
         this.status = ProfileStatus.DRAFT;
     }

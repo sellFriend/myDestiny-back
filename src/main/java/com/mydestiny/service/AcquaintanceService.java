@@ -3,6 +3,7 @@ package com.mydestiny.service;
 import com.mydestiny.domain.DatingProfile;
 import com.mydestiny.domain.ProfilePhoto;
 import com.mydestiny.domain.User;
+import com.mydestiny.domain.enums.MatchingStatus;
 import com.mydestiny.domain.enums.NotificationType;
 import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.dto.acquaintance.AcquaintanceDetailResponse;
@@ -13,6 +14,7 @@ import com.mydestiny.dto.acquaintance.InviteResponse;
 import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.exception.BusinessException;
 import com.mydestiny.repository.DatingProfileRepository;
+import com.mydestiny.repository.MatchingRepository;
 import com.mydestiny.repository.ProfilePhotoRepository;
 import com.mydestiny.repository.UserRepository;
 import com.mydestiny.util.PhoneEncryptionUtil;
@@ -45,6 +47,15 @@ public class AcquaintanceService {
     private final PhoneHashUtil phoneHashUtil;
     private final PhoneEncryptionUtil phoneEncryptionUtil;
     private final PhoneLookupUtil phoneLookupUtil;
+    private final MatchingRepository matchingRepository;
+
+    // 수정 요청 자체가 불가한 상태 — 상대가 수락했거나 동의 진행 중/성사된 매칭(사실상 매칭됨)
+    private static final List<MatchingStatus> MATCH_COMMITTED_STATUSES = List.of(
+            MatchingStatus.ACCEPTED_BY_RECEIVER,
+            MatchingStatus.CONSENT_PENDING,
+            MatchingStatus.CONSENT_PARTIALLY_APPROVED,
+            MatchingStatus.MATCHED
+    );
 
     @Value("${app.form.base-url:http://localhost:3000/form}")
     private String formBaseUrl;
@@ -131,9 +142,15 @@ public class AcquaintanceService {
                 .orElse(null);
 
         if (existing != null) {
-            if (existing.getStatus() == ProfileStatus.PUBLISHED) {
-                throw new BusinessException("이미 등록 완료된 카드입니다.", HttpStatus.CONFLICT);
+            // 수정 요청을 받은(DRAFT) 카드 + 아직 승인 전(PENDING_APPROVAL) 카드는 친구가 직접 재제출 가능.
+            // PUBLISHED 등 그 외 상태는 주선자의 수정 요청을 거쳐야 함
+            if (existing.getStatus() != ProfileStatus.DRAFT
+                    && existing.getStatus() != ProfileStatus.PENDING_APPROVAL) {
+                throw new BusinessException(
+                        "주선자에게 폼 수정 요청을 받은 카드만 수정할 수 있습니다.",
+                        HttpStatus.CONFLICT);
             }
+
             existing.resubmitByFriend(
                     req.name(), req.age(), req.gender(), req.job(), req.intro(),
                     req.mbti(), req.hobbies(), req.kakaoId(), req.instagramId(),
@@ -286,6 +303,24 @@ public class AcquaintanceService {
     @Transactional
     public void requestEdit(String profileId, String userId) {
         DatingProfile profile = findOwnedProfile(profileId, userId);
+
+        // 매칭 상태 게이트 — 매칭(진행/성사)은 불가, 받은/보낸 요청은 정리 후 가능
+        if (matchingRepository.isProfileInActiveMatch(profileId, MATCH_COMMITTED_STATUSES)) {
+            throw new BusinessException(
+                    "이미 매칭이 진행 중이거나 성사된 프로필은 수정 요청할 수 없습니다.",
+                    HttpStatus.CONFLICT);
+        }
+        if (matchingRepository.existsByTargetProfileIdAndStatus(profileId, MatchingStatus.PENDING)) {
+            throw new BusinessException(
+                    "받은 매칭 요청을 모두 거절한 뒤 수정 요청이 가능합니다.",
+                    HttpStatus.CONFLICT);
+        }
+        if (matchingRepository.existsByRequesterProfileIdAndStatus(profileId, MatchingStatus.PENDING)) {
+            throw new BusinessException(
+                    "보낸 매칭 요청을 모두 취소한 뒤 수정 요청이 가능합니다.",
+                    HttpStatus.CONFLICT);
+        }
+
         try {
             profile.requestEditByRegistrant();
         } catch (IllegalStateException e) {
