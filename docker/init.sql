@@ -99,7 +99,7 @@ CREATE TABLE dating_profiles (
     status                  VARCHAR(30)   NOT NULL DEFAULT 'DRAFT'    COMMENT 'ProfileStatus enum',
     name                    VARCHAR(100)  NOT NULL,
     birth_date              DATE,
-    gender                  VARCHAR(10)                               COMMENT 'male | female | other',
+    gender                  VARCHAR(10)                               COMMENT 'MALE | FEMALE | OTHER',
     age                     INT           NULL                        COMMENT '나이 (직접 입력)',
     is_student              TINYINT(1)    NOT NULL DEFAULT 0          COMMENT '학생 여부',
     school_name             VARCHAR(100)  NULL                        COMMENT '학교명 (학생인 경우)',

@@ -40,7 +40,7 @@ public record MatchingResponse(
         return new ProfileSummary(
                 p.getId(),
                 p.getName(),
-                p.getGender() != null ? p.getGender().name() : null
+                p.getGender() != null ? p.getGender().getDbValue() : null
         );
     }
 }

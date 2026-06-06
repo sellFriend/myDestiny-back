@@ -16,7 +16,7 @@ INSERT INTO dating_profiles (
 ) VALUES
 (
     UUID(), '73ebdb1e-bc01-4a04-bb10-23604f89f0df', NULL,
-    'PENDING_APPROVAL', '김민준', 27, 'male',
+    'PENDING_APPROVAL', '김민준', 27, 'MALE',
     0, '소프트웨어 개발자', 'INTJ', '등산, 요리, 독서',
     '취미로 등산과 요리를 즐기는 평범한 직장인입니다.',
     'minjun_k', 'minjun.kim',
@@ -27,7 +27,7 @@ INSERT INTO dating_profiles (
 ),
 (
     UUID(), '73ebdb1e-bc01-4a04-bb10-23604f89f0df', NULL,
-    'PENDING_APPROVAL', '이서연', 25, 'female',
+    'PENDING_APPROVAL', '이서연', 25, 'FEMALE',
     0, '간호사', 'ENFJ', '카페 탐방, 영화 감상, 요가',
     '활발하고 긍정적인 성격입니다. 카페 탐방을 좋아해요.',
     'seoyeon_l', NULL,
@@ -38,7 +38,7 @@ INSERT INTO dating_profiles (
 ),
 (
     UUID(), '73ebdb1e-bc01-4a04-bb10-23604f89f0df', NULL,
-    'PENDING_APPROVAL', '박지호', 29, 'male',
+    'PENDING_APPROVAL', '박지호', 29, 'MALE',
     0, '디자이너', 'INFP', '전시회 관람, 음악 감상, 그림',
     '감성적이고 창의적인 사람입니다. 전시회나 공연 보는 걸 좋아해요.',
     NULL, 'jiho_design',
@@ -49,7 +49,7 @@ INSERT INTO dating_profiles (
 ),
 (
     UUID(), '73ebdb1e-bc01-4a04-bb10-23604f89f0df', NULL,
-    'PENDING_APPROVAL', '최수아', 26, 'female',
+    'PENDING_APPROVAL', '최수아', 26, 'FEMALE',
     0, '마케터', 'ESTP', '헬스, 러닝, 맛집 탐방',
     '새로운 사람 만나는 걸 좋아하고 운동을 꾸준히 합니다.',
     'sua_choi', 'sua_choi',
@@ -60,7 +60,7 @@ INSERT INTO dating_profiles (
 ),
 (
     UUID(), '73ebdb1e-bc01-4a04-bb10-23604f89f0df', NULL,
-    'PENDING_APPROVAL', '정현우', 28, 'male',
+    'PENDING_APPROVAL', '정현우', 28, 'MALE',
     0, '교사', 'ISTJ', '독서, 보드게임, 자전거',
     '차분하고 배려심 있는 성격입니다. 주말엔 보통 독서나 게임을 해요.',
     'hyunwoo_j', NULL,
