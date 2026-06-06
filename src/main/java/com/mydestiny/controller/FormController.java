@@ -22,7 +22,8 @@ public class FormController {
 
     private final AcquaintanceService acquaintanceService;
 
-    // 폼 진입 — 인증 옵셔널. 로그인된 친구의 기존 작성분이 있으면 draft에 prefill 데이터, 없으면 draft=null.
+    // 폼 진입 — 인증 옵셔널. 비로그인 허용(public), 로그인 상태면 본인 폼 차단.
+    // 로그인된 친구의 기존 작성분이 있으면 draft에 prefill 데이터, 없으면 draft=null.
     @GetMapping("/{madamId}")
     public ResponseEntity<ApiResponse<FormPrefillResponse>> validateForm(
             @PathVariable String madamId,

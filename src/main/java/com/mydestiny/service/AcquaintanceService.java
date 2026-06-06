@@ -62,12 +62,16 @@ public class AcquaintanceService {
     }
 
     // 친구가 폼 진입 시 — 마담 존재 검증 + 본인의 기존 작성분 있으면 prefill 데이터 반환
+    // 로그인 상태로 자신의 폼을 연 경우(마담==로그인 사용자)는 차단
     @Transactional(readOnly = true)
     public FormPrefillResponse getFormState(String madamId, String friendUserId) {
         if (!userRepository.existsById(madamId)) {
             throw new BusinessException("유효하지 않은 폼 링크입니다.", HttpStatus.NOT_FOUND);
         }
-        if (friendUserId == null || friendUserId.equals(madamId)) {
+        if (madamId.equals(friendUserId)) {
+            throw new BusinessException("본인의 폼에는 등록할 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
+        if (friendUserId == null) {
             return FormPrefillResponse.empty();
         }
         return acquaintanceRepository
