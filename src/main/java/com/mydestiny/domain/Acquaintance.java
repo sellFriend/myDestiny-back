@@ -27,6 +27,10 @@ public class Acquaintance {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "friend_user_id")
+    private User friendUser;
+
     @Column(nullable = false, length = 50)
     private String name;
 
@@ -112,5 +116,33 @@ public class Acquaintance {
 
     public void reject() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    // 주선자가 수정 요청 — 승인 대기 카드를 다시 DRAFT로 되돌려 친구가 수정할 수 있게 함
+    public void requestEdit() {
+        if (this.registrationStatus != RegistrationStatus.VERIFICATION_PENDING) {
+            throw new IllegalStateException("승인 대기 상태에서만 수정 요청할 수 있습니다.");
+        }
+        this.registrationStatus = RegistrationStatus.DRAFT;
+    }
+
+    // 친구가 폼 재방문 후 수정 제출 — 필드 갱신 + 상태를 다시 승인 대기로 복귀
+    public void updateForResubmit(
+            String name, Integer age, Gender gender, String job, String intro,
+            String mbti, String hobbies, String phoneNumber, String email,
+            String kakaoId, String instagramId
+    ) {
+        this.name = name;
+        this.age = age;
+        this.gender = gender;
+        this.job = job;
+        this.intro = intro;
+        this.mbti = mbti;
+        this.hobbies = hobbies;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.kakaoId = kakaoId;
+        this.instagramId = instagramId;
+        this.registrationStatus = RegistrationStatus.VERIFICATION_PENDING;
     }
 }

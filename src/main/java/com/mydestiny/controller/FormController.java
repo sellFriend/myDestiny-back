@@ -2,6 +2,7 @@ package com.mydestiny.controller;
 
 import com.mydestiny.dto.acquaintance.FormDataRequest;
 import com.mydestiny.dto.acquaintance.FormDataResponse;
+import com.mydestiny.dto.acquaintance.FormPrefillResponse;
 import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.response.ApiResponse;
 import com.mydestiny.service.AcquaintanceService;
@@ -21,11 +22,13 @@ public class FormController {
 
     private final AcquaintanceService acquaintanceService;
 
-    // 폼 링크 유효성 확인 — 인증 불필요 (public)
+    // 폼 진입 — 인증 옵셔널. 로그인된 친구의 기존 작성분이 있으면 draft에 prefill 데이터, 없으면 draft=null.
     @GetMapping("/{madamId}")
-    public ResponseEntity<ApiResponse<Void>> validateForm(@PathVariable String madamId) {
-        acquaintanceService.validateToken(madamId);
-        return ResponseEntity.ok(ApiResponse.ok("유효한 폼 링크입니다.", null));
+    public ResponseEntity<ApiResponse<FormPrefillResponse>> validateForm(
+            @PathVariable String madamId,
+            @AuthenticationPrincipal String userId) {
+        FormPrefillResponse response = acquaintanceService.getFormState(madamId, userId);
+        return ResponseEntity.ok(ApiResponse.ok("유효한 폼 링크입니다.", response));
     }
 
     // 프로필 제출 — 카카오 로그인 후 호출 (인증 필요)

@@ -70,6 +70,7 @@ CREATE TABLE users (
 CREATE TABLE acquaintances (
     id                   CHAR(36)     PRIMARY KEY DEFAULT (UUID()),
     user_id              CHAR(36)     NOT NULL,
+    friend_user_id       CHAR(36)     NULL,
     name                 VARCHAR(50)  NOT NULL,
     age                  INT          NOT NULL,
     gender               ENUM('male', 'female', 'other'),
@@ -96,6 +97,10 @@ CREATE TABLE acquaintances (
         FOREIGN KEY (user_id) REFERENCES users(id)
             ON DELETE RESTRICT ON UPDATE CASCADE,
 
+    CONSTRAINT fk_acquaintances_friend_user
+        FOREIGN KEY (friend_user_id) REFERENCES users(id)
+            ON DELETE SET NULL ON UPDATE CASCADE,
+
     CONSTRAINT chk_acquaintances_age
         CHECK (age BETWEEN 10 AND 99),
 
@@ -103,6 +108,7 @@ CREATE TABLE acquaintances (
         CHECK (mbti IS NULL OR mbti REGEXP '^[A-Z]{4}$'),
 
     INDEX idx_acquaintances_user_id (user_id),
+    INDEX idx_acquaintances_friend_user_id (friend_user_id),
     INDEX idx_acquaintances_phone_number (phone_number),
     INDEX idx_acquaintances_verification_token (verification_token),
     INDEX idx_listing_query (registration_status, visibility, deleted_at),
@@ -369,7 +375,8 @@ CREATE TABLE notifications (
         'match_consent_rejected',
         'matched',
         'match_request_expired',
-        'match_consent_expired'
+        'match_consent_expired',
+        'edit_requested'
     ) NOT NULL,
     matching_id   CHAR(36),
     consent_id    VARCHAR(36) NULL,
