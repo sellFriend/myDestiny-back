@@ -8,7 +8,6 @@ import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.domain.enums.ProfileVisibility;
 import com.mydestiny.dto.profile.ProfileCreateRequest;
 import com.mydestiny.dto.profile.ProfileDetailResponse;
-import com.mydestiny.dto.profile.ProfileSummaryResponse;
 import com.mydestiny.dto.profile.PublicProfileResponse;
 import com.mydestiny.dto.profile.ProfileUpdateRequest;
 import com.mydestiny.service.FollowService;
@@ -36,6 +35,7 @@ public class ProfileService {
     private final ObjectStorageService objectStorageService;
     private final PhoneHashUtil phoneHashUtil;
     private final PhoneEncryptionUtil phoneEncryptionUtil;
+    private final com.mydestiny.util.PhoneLookupUtil phoneLookupUtil;
     private final FollowService followService;
 
     @Transactional
@@ -63,6 +63,7 @@ public class ProfileService {
                         .instagramId(req.instagramId())
                         .subjectPhoneHash(phoneHashUtil.hash(req.subjectPhone()))
                         .subjectPhoneEncrypted(encryptedPhone)
+                        .subjectPhoneLookup(phoneLookupUtil.lookup(req.subjectPhone()))
                         .build()
         );
         return ProfileDetailResponse.from(profile, req.subjectPhone());
@@ -94,15 +95,6 @@ public class ProfileService {
         checkOwner(profile, userId);
         profile.changeVisibility(visibility);
         profileRepository.save(profile);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ProfileSummaryResponse> getMyProfiles(String userId) {
-        return profileRepository
-                .findByRegistrantIdAndStatusNotOrderByCreatedAtDesc(userId, ProfileStatus.DELETED)
-                .stream()
-                .map(ProfileSummaryResponse::from)
-                .toList();
     }
 
     @Transactional(readOnly = true)

@@ -1,7 +1,7 @@
 package com.mydestiny.dto.acquaintance;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.AcquaintancePhoto;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.ProfilePhoto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,18 +19,18 @@ public record AcquaintanceDetailResponse(
         LocalDateTime verifiedAt,
         List<String> photoUrls
 ) {
-    public static AcquaintanceDetailResponse from(Acquaintance a) {
-        List<String> photos = a.getPhotos() == null ? List.of() :
-                a.getPhotos().stream()
-                        .sorted(java.util.Comparator.comparingInt(AcquaintancePhoto::getDisplayOrder))
-                        .map(AcquaintancePhoto::getImageUrl)
+    public static AcquaintanceDetailResponse from(DatingProfile p) {
+        List<String> photos = p.getPhotos() == null ? List.of() :
+                p.getPhotos().stream()
+                        .sorted(java.util.Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
+                        .map(ProfilePhoto::getImageUrl)
                         .toList();
         return new AcquaintanceDetailResponse(
-                a.getId(), a.getName(), a.getAge(),
-                a.getGender() != null ? a.getGender().getDbValue() : null,
-                a.getJob(), a.getIntro(), a.getMbti(), a.getHobbies(),
-                a.getRegistrationStatus().getDbValue(),
-                a.getVerifiedAt(), photos
+                p.getId(), p.getName(), p.getAge(),
+                p.getGender() != null ? p.getGender().getDbValue() : null,
+                p.getOccupation(), p.getIntroduction(), p.getMbti(), p.getHobby(),
+                p.getStatus().name(),
+                p.getPublishedAt(), photos
         );
     }
 }

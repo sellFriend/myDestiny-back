@@ -91,9 +91,17 @@ public class DatingProfile {
     @Column(name = "subject_phone_encrypted", length = 256)
     private String subjectPhoneEncrypted;
 
+    // 전화번호 중복검사용 blind index — 고정키 HMAC-SHA256 (동등비교 조회용)
+    @Column(name = "subject_phone_lookup", length = 64)
+    private String subjectPhoneLookup;
+
     @Column(name = "is_same_person_detected", nullable = false)
     @Builder.Default
     private boolean isSamePersonDetected = false;
+
+    // 주선자 폼 흐름에서 친구(subject)가 사진을 업로드할 때 쓰는 토큰
+    @Column(name = "upload_token", unique = true, length = 64)
+    private String uploadToken;
 
     @Column(name = "consent_agreed_at")
     private LocalDateTime consentAgreedAt;
@@ -256,6 +264,37 @@ public class DatingProfile {
     public void softDelete() {
         this.status = ProfileStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    // === 주선자 폼 흐름 (친구가 본인 정보를 작성, 주선자가 승인) ===
+
+    // 주선자가 수정 요청 — 승인 대기 카드를 DRAFT로 되돌려 친구가 다시 작성하게 함
+    public void requestEditByRegistrant() {
+        if (this.status != ProfileStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("승인 대기 상태에서만 수정 요청할 수 있습니다.");
+        }
+        this.status = ProfileStatus.DRAFT;
+    }
+
+    // 친구가 폼 재방문 후 수정 제출 — 필드 갱신 + 상태를 다시 승인 대기로 복귀
+    public void resubmitByFriend(String name, Integer age, String gender, String occupation,
+                                 String introduction, String mbti, String hobby,
+                                 String kakaoId, String instagramId,
+                                 String subjectPhoneHash, String subjectPhoneEncrypted,
+                                 String subjectPhoneLookup) {
+        this.name = name;
+        this.age = age;
+        this.gender = gender != null ? Gender.fromDb(gender) : null;
+        this.occupation = occupation;
+        this.introduction = introduction;
+        this.mbti = mbti;
+        this.hobby = hobby;
+        this.kakaoId = kakaoId;
+        this.instagramId = instagramId;
+        this.subjectPhoneHash = subjectPhoneHash;
+        this.subjectPhoneEncrypted = subjectPhoneEncrypted;
+        this.subjectPhoneLookup = subjectPhoneLookup;
+        this.status = ProfileStatus.PENDING_APPROVAL;
     }
 
     public boolean isOwnedBy(String userId) {

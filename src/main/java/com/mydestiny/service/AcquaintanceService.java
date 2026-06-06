@@ -1,11 +1,10 @@
 package com.mydestiny.service;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.AcquaintancePhoto;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.ProfilePhoto;
 import com.mydestiny.domain.User;
-import com.mydestiny.domain.enums.Gender;
 import com.mydestiny.domain.enums.NotificationType;
-import com.mydestiny.domain.enums.RegistrationStatus;
+import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.dto.acquaintance.AcquaintanceDetailResponse;
 import com.mydestiny.dto.acquaintance.FormDataRequest;
 import com.mydestiny.dto.acquaintance.FormDataResponse;
@@ -13,9 +12,12 @@ import com.mydestiny.dto.acquaintance.FormPrefillResponse;
 import com.mydestiny.dto.acquaintance.InviteResponse;
 import com.mydestiny.dto.acquaintance.PhotoResponse;
 import com.mydestiny.global.exception.BusinessException;
-import com.mydestiny.repository.AcquaintancePhotoRepository;
-import com.mydestiny.repository.AcquaintanceRepository;
+import com.mydestiny.repository.DatingProfileRepository;
+import com.mydestiny.repository.ProfilePhotoRepository;
 import com.mydestiny.repository.UserRepository;
+import com.mydestiny.util.PhoneEncryptionUtil;
+import com.mydestiny.util.PhoneHashUtil;
+import com.mydestiny.util.PhoneLookupUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -27,15 +29,22 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 주선자 폼 흐름 — 친구(subject)가 본인 정보를 작성하고 주선자(registrant)가 승인한다.
+ * 저장소는 dating_profiles 단일 시스템을 사용한다. (구 acquaintances 테이블 통합)
+ */
 @Service
 @RequiredArgsConstructor
 public class AcquaintanceService {
 
-    private final AcquaintanceRepository acquaintanceRepository;
-    private final AcquaintancePhotoRepository acquaintancePhotoRepository;
+    private final DatingProfileRepository profileRepository;
+    private final ProfilePhotoRepository profilePhotoRepository;
     private final UserRepository userRepository;
     private final ObjectStorageService objectStorageService;
     private final NotificationService notificationService;
+    private final PhoneHashUtil phoneHashUtil;
+    private final PhoneEncryptionUtil phoneEncryptionUtil;
+    private final PhoneLookupUtil phoneLookupUtil;
 
     @Value("${app.form.base-url:http://localhost:3000/form}")
     private String formBaseUrl;
@@ -44,14 +53,13 @@ public class AcquaintanceService {
     private List<String> allowedOrigins;
 
     // 마담 자신의 영구 폼 링크 반환
-    // 요청 Origin 이 허용 목록에 있으면 그 도메인 기준으로, 아니면 설정값으로 링크 생성
-    // 현재 매물로 등록된 사람(삭제되지 않은 acquaintance)은 주선자 역할 불가
+    // 매물(친구)로 등록된 사용자는 주선자 역할 불가
     @Transactional(readOnly = true)
     public InviteResponse getFormLink(String userId, String requestOrigin) {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
         }
-        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(userId)) {
+        if (profileRepository.existsBySubjectIdAndStatusNot(userId, ProfileStatus.DELETED)) {
             throw new BusinessException("매물로 등록된 사용자는 주선자 역할을 할 수 없습니다.", HttpStatus.FORBIDDEN);
         }
         return new InviteResponse(resolveFormBaseUrl(requestOrigin) + "/" + userId);
@@ -66,7 +74,7 @@ public class AcquaintanceService {
     }
 
     // 친구가 폼 진입 시 — 마담 존재 검증 + 본인의 기존 작성분 있으면 prefill 데이터 반환
-    // 차단: 본인 폼, 이미 주선자인 사람, 이미 다른 마담의 지인으로 등록된 사람
+    // 차단: 본인 폼, 이미 주선자인 사람, 이미 다른 마담의 친구로 등록된 사람
     @Transactional(readOnly = true)
     public FormPrefillResponse getFormState(String madamId, String friendUserId) {
         if (!userRepository.existsById(madamId)) {
@@ -78,16 +86,19 @@ public class AcquaintanceService {
         if (friendUserId == null) {
             return FormPrefillResponse.empty();
         }
-        if (acquaintanceRepository.existsByUserIdAndDeletedAtIsNull(friendUserId)) {
-            throw new BusinessException("주선자는 지인으로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
+        if (profileRepository.existsByRegistrantIdAndStatusNot(friendUserId, ProfileStatus.DELETED)) {
+            throw new BusinessException("주선자는 친구로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
         }
-        Acquaintance existing = acquaintanceRepository
-                .findByUserIdAndFriendUserIdAndDeletedAtIsNull(madamId, friendUserId)
+        DatingProfile existing = profileRepository
+                .findByRegistrantIdAndSubjectIdAndStatusNot(madamId, friendUserId, ProfileStatus.DELETED)
                 .orElse(null);
         if (existing != null) {
-            return FormPrefillResponse.of(existing);
+            String phone = existing.getSubjectPhoneEncrypted() != null
+                    ? phoneEncryptionUtil.decrypt(existing.getSubjectPhoneEncrypted())
+                    : null;
+            return FormPrefillResponse.of(existing, phone);
         }
-        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(friendUserId)) {
+        if (profileRepository.existsBySubjectIdAndStatusNot(friendUserId, ProfileStatus.DELETED)) {
             throw new BusinessException("이미 다른 주선자를 통해 등록되어 있습니다.", HttpStatus.BAD_REQUEST);
         }
         return FormPrefillResponse.empty();
@@ -106,84 +117,89 @@ public class AcquaintanceService {
         User friend = userRepository.findById(friendUserId)
                 .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
-        if (acquaintanceRepository.existsByUserIdAndDeletedAtIsNull(friendUserId)) {
-            throw new BusinessException("주선자는 지인으로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
+        if (profileRepository.existsByRegistrantIdAndStatusNot(friendUserId, ProfileStatus.DELETED)) {
+            throw new BusinessException("주선자는 친구로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
         }
 
-        Gender gender = req.gender() != null ? Gender.fromDb(req.gender()) : null;
+        String phoneHash = phoneHashUtil.hash(req.phoneNumber());
+        String phoneEncrypted = phoneEncryptionUtil.encrypt(req.phoneNumber());
+        String phoneLookup = phoneLookupUtil.lookup(req.phoneNumber());
 
         // 기존 작성분이 있으면 update — 없으면 신규 create
-        Acquaintance existing = acquaintanceRepository
-                .findByUserIdAndFriendUserIdAndDeletedAtIsNull(madamId, friendUserId)
+        DatingProfile existing = profileRepository
+                .findByRegistrantIdAndSubjectIdAndStatusNot(madamId, friendUserId, ProfileStatus.DELETED)
                 .orElse(null);
 
         if (existing != null) {
-            if (existing.getRegistrationStatus() == RegistrationStatus.VERIFIED) {
+            if (existing.getStatus() == ProfileStatus.PUBLISHED) {
                 throw new BusinessException("이미 등록 완료된 카드입니다.", HttpStatus.CONFLICT);
             }
-            existing.updateForResubmit(
-                    req.name(), req.age(), gender, req.job(), req.intro(),
-                    req.mbti(), req.hobbies(), req.phoneNumber(), friend.getEmail(),
-                    req.kakaoId(), req.instagramId()
+            existing.resubmitByFriend(
+                    req.name(), req.age(), req.gender(), req.job(), req.intro(),
+                    req.mbti(), req.hobbies(), req.kakaoId(), req.instagramId(),
+                    phoneHash, phoneEncrypted, phoneLookup
             );
-            acquaintanceRepository.save(existing);
+            profileRepository.save(existing);
             notificationService.create(madamId, NotificationType.FORM_SUBMITTED, existing.getId());
-            return new FormDataResponse(existing.getId(), existing.getVerificationToken(), existing.getRegistrationStatus().getDbValue());
+            return new FormDataResponse(existing.getId(), existing.getUploadToken(), existing.getStatus().name());
         }
 
-        // 신규 생성 시 — 다른 마담의 지인으로 이미 등록됐는지 차단
-        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(friendUserId)) {
+        // 신규 생성 시 — 다른 마담의 친구로 이미 등록됐는지 차단 (계정 기준)
+        if (profileRepository.existsBySubjectIdAndStatusNot(friendUserId, ProfileStatus.DELETED)) {
             throw new BusinessException("이미 다른 주선자를 통해 등록되어 있습니다.", HttpStatus.CONFLICT);
         }
 
-        // 전화번호 중복 체크 (다른 마담을 통해 이미 VERIFIED인 번호 차단)
-        if (acquaintanceRepository.existsByPhoneNumberAndRegistrationStatus(
-                req.phoneNumber(), RegistrationStatus.VERIFIED)) {
-            throw new BusinessException("이미 다른 마담을 통해 등록 완료된 번호입니다.", HttpStatus.CONFLICT);
+        // 같은 전화번호로 이미 승인 완료된 프로필이 있는지 차단 (번호 기준)
+        if (profileRepository.existsBySubjectPhoneLookupAndStatus(phoneLookup, ProfileStatus.PUBLISHED)) {
+            throw new BusinessException("이미 다른 주선자를 통해 등록 완료된 번호입니다.", HttpStatus.CONFLICT);
         }
 
         String uploadToken = UUID.randomUUID().toString().replace("-", "");
 
-        Acquaintance acquaintance = acquaintanceRepository.save(Acquaintance.builder()
-                .user(madam)
-                .friendUser(friend)
+        DatingProfile profile = profileRepository.save(DatingProfile.builder()
+                .registrant(madam)
+                .subject(friend)
+                .status(ProfileStatus.PENDING_APPROVAL)
                 .name(req.name())
                 .age(req.age())
-                .gender(gender)
-                .job(req.job())
-                .intro(req.intro())
+                .gender(req.gender() != null ? com.mydestiny.domain.enums.Gender.fromDb(req.gender()) : null)
+                .occupation(req.job())
+                .introduction(req.intro())
                 .mbti(req.mbti())
-                .hobbies(req.hobbies())
-                .phoneNumber(req.phoneNumber())
-                .email(friend.getEmail())
+                .hobby(req.hobbies())
                 .kakaoId(req.kakaoId())
                 .instagramId(req.instagramId())
-                .verificationToken(uploadToken)
-                .tokenExpiresAt(null)
+                .subjectPhoneHash(phoneHash)
+                .subjectPhoneEncrypted(phoneEncrypted)
+                .subjectPhoneLookup(phoneLookup)
+                .uploadToken(uploadToken)
                 .build());
 
         // 카카오 프로필 사진 사용 허용 시 첫 번째 사진으로 등록
         if (req.useKakaoPhoto() && friend.getKakaoProfileImageUrl() != null) {
-            acquaintancePhotoRepository.save(AcquaintancePhoto.builder()
-                    .acquaintance(acquaintance)
+            profilePhotoRepository.save(ProfilePhoto.builder()
+                    .profile(profile)
                     .imageUrl(friend.getKakaoProfileImageUrl())
                     .displayOrder(0)
                     .build());
         }
 
-        notificationService.create(madamId, NotificationType.FORM_SUBMITTED, acquaintance.getId());
+        notificationService.create(madamId, NotificationType.FORM_SUBMITTED, profile.getId());
 
-        return new FormDataResponse(acquaintance.getId(), uploadToken, acquaintance.getRegistrationStatus().getDbValue());
+        return new FormDataResponse(profile.getId(), uploadToken, profile.getStatus().name());
     }
 
     private static final Set<String> ALLOWED_IMAGE_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
+    // 친구 1명당 등록 가능한 사진 수. 추후 여러 장 확장 시 이 값만 늘리면 됨.
+    private static final int MAX_PHOTOS = 1;
+
     // 폼 사진 목록 조회 — uploadToken 으로 현재 등록된 사진과 photoId 확인
     @Transactional(readOnly = true)
     public List<PhotoResponse> getPhotos(String uploadToken) {
-        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
-        return acquaintancePhotoRepository.findByAcquaintanceIdOrderByDisplayOrder(acquaintance.getId()).stream()
+        DatingProfile profile = findProfileByToken(uploadToken);
+        return profilePhotoRepository.findByProfileIdOrderByDisplayOrder(profile.getId()).stream()
                 .map(PhotoResponse::from)
                 .toList();
     }
@@ -191,18 +207,18 @@ public class AcquaintanceService {
     // 폼 제출 후 사진 추가 업로드 — submitForm 응답의 uploadToken 사용
     @Transactional
     public PhotoResponse uploadPhoto(String uploadToken, MultipartFile file) {
-        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
+        DatingProfile profile = findProfileByToken(uploadToken);
         validateImageType(file);
 
-        int count = acquaintancePhotoRepository.countByAcquaintanceId(acquaintance.getId());
-        if (count >= 5) {
-            throw new BusinessException("사진은 최대 5장까지 등록할 수 있습니다.", HttpStatus.BAD_REQUEST);
+        int count = profilePhotoRepository.countByProfileId(profile.getId());
+        if (count >= MAX_PHOTOS) {
+            throw new BusinessException("사진은 최대 " + MAX_PHOTOS + "장까지 등록할 수 있습니다.", HttpStatus.BAD_REQUEST);
         }
 
-        String url = objectStorageService.upload(file, "acquaintances/" + acquaintance.getId());
+        String url = objectStorageService.upload(file, "profiles/" + profile.getId());
 
-        AcquaintancePhoto photo = acquaintancePhotoRepository.save(AcquaintancePhoto.builder()
-                .acquaintance(acquaintance)
+        ProfilePhoto photo = profilePhotoRepository.save(ProfilePhoto.builder()
+                .profile(profile)
                 .imageUrl(url)
                 .displayOrder(count)
                 .build());
@@ -213,24 +229,24 @@ public class AcquaintanceService {
     // 폼 사진 교체 — 기존 파일을 스토리지에서 삭제하고 새 파일로 대체
     @Transactional
     public PhotoResponse replacePhoto(String uploadToken, String photoId, MultipartFile file) {
-        Acquaintance acquaintance = findAcquaintanceByToken(uploadToken);
+        DatingProfile profile = findProfileByToken(uploadToken);
         validateImageType(file);
 
-        AcquaintancePhoto photo = acquaintancePhotoRepository.findById(photoId)
+        ProfilePhoto photo = profilePhotoRepository.findById(photoId)
                 .orElseThrow(() -> new BusinessException("사진을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
-        if (!photo.getAcquaintance().getId().equals(acquaintance.getId())) {
+        if (!photo.getProfile().getId().equals(profile.getId())) {
             throw new BusinessException("해당 사진에 대한 권한이 없습니다.", HttpStatus.FORBIDDEN);
         }
 
         objectStorageService.delete(photo.getImageUrl());
-        String url = objectStorageService.upload(file, "acquaintances/" + acquaintance.getId());
+        String url = objectStorageService.upload(file, "profiles/" + profile.getId());
         photo.changeImageUrl(url);
 
-        return PhotoResponse.from(acquaintancePhotoRepository.save(photo));
+        return PhotoResponse.from(profilePhotoRepository.save(photo));
     }
 
-    private Acquaintance findAcquaintanceByToken(String uploadToken) {
-        return acquaintanceRepository.findByVerificationToken(uploadToken)
+    private DatingProfile findProfileByToken(String uploadToken) {
+        return profileRepository.findByUploadToken(uploadToken)
                 .orElseThrow(() -> new BusinessException("유효하지 않은 업로드 토큰입니다.", HttpStatus.NOT_FOUND));
     }
 
@@ -242,55 +258,55 @@ public class AcquaintanceService {
 
     @Transactional(readOnly = true)
     public List<AcquaintanceDetailResponse> getMyAcquaintances(String userId) {
-        return acquaintanceRepository.findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
+        return profileRepository.findByRegistrantIdAndStatusNotOrderByCreatedAtDesc(userId, ProfileStatus.DELETED)
+                .stream()
                 .map(AcquaintanceDetailResponse::from)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public AcquaintanceDetailResponse getAcquaintance(String acquaintanceId, String userId) {
-        return AcquaintanceDetailResponse.from(findOwnedAcquaintance(acquaintanceId, userId));
-    }
-
     @Transactional
-    public void approve(String acquaintanceId, String userId) {
-        Acquaintance acquaintance = findOwnedAcquaintance(acquaintanceId, userId);
-        acquaintance.approve();
-        acquaintanceRepository.save(acquaintance);
-        notificationService.create(userId, NotificationType.VERIFICATION_DONE, acquaintanceId);
-    }
-
-    @Transactional
-    public void reject(String acquaintanceId, String userId) {
-        Acquaintance acquaintance = findOwnedAcquaintance(acquaintanceId, userId);
-        acquaintance.reject();
-        acquaintanceRepository.save(acquaintance);
-    }
-
-    @Transactional
-    public void requestEdit(String acquaintanceId, String userId) {
-        Acquaintance acquaintance = findOwnedAcquaintance(acquaintanceId, userId);
+    public void approve(String profileId, String userId) {
+        DatingProfile profile = findOwnedProfile(profileId, userId);
         try {
-            acquaintance.requestEdit();
+            profile.approve();
         } catch (IllegalStateException e) {
             throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
         }
-        acquaintanceRepository.save(acquaintance);
-        if (acquaintance.getFriendUser() != null) {
+        profileRepository.save(profile);
+        notificationService.create(userId, NotificationType.VERIFICATION_DONE, profileId);
+    }
+
+    @Transactional
+    public void reject(String profileId, String userId) {
+        DatingProfile profile = findOwnedProfile(profileId, userId);
+        profile.softDelete();
+        profileRepository.save(profile);
+    }
+
+    @Transactional
+    public void requestEdit(String profileId, String userId) {
+        DatingProfile profile = findOwnedProfile(profileId, userId);
+        try {
+            profile.requestEditByRegistrant();
+        } catch (IllegalStateException e) {
+            throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
+        }
+        profileRepository.save(profile);
+        if (profile.getSubject() != null) {
             notificationService.create(
-                    acquaintance.getFriendUser().getId(),
+                    profile.getSubject().getId(),
                     NotificationType.EDIT_REQUESTED,
-                    acquaintanceId
+                    profileId
             );
         }
     }
 
-    private Acquaintance findOwnedAcquaintance(String acquaintanceId, String userId) {
-        Acquaintance acquaintance = acquaintanceRepository.findById(acquaintanceId)
+    private DatingProfile findOwnedProfile(String profileId, String userId) {
+        DatingProfile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new BusinessException("등록된 친구를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
-        if (!acquaintance.getUser().getId().equals(userId)) {
+        if (!profile.getRegistrant().getId().equals(userId)) {
             throw new BusinessException("접근 권한이 없습니다.", HttpStatus.FORBIDDEN);
         }
-        return acquaintance;
+        return profile;
     }
 }

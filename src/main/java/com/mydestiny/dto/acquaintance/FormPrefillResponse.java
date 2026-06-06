@@ -1,7 +1,7 @@
 package com.mydestiny.dto.acquaintance;
 
-import com.mydestiny.domain.Acquaintance;
-import com.mydestiny.domain.AcquaintancePhoto;
+import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.ProfilePhoto;
 
 import java.util.Comparator;
 import java.util.List;
@@ -26,26 +26,26 @@ public record FormPrefillResponse(Draft draft) {
             String instagramId,
             List<String> photoUrls
     ) {
-        public static Draft from(Acquaintance a) {
-            List<String> photos = a.getPhotos() == null ? List.of() :
-                    a.getPhotos().stream()
-                            .sorted(Comparator.comparingInt(AcquaintancePhoto::getDisplayOrder))
-                            .map(AcquaintancePhoto::getImageUrl)
+        public static Draft from(DatingProfile p, String phoneNumber) {
+            List<String> photos = p.getPhotos() == null ? List.of() :
+                    p.getPhotos().stream()
+                            .sorted(Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
+                            .map(ProfilePhoto::getImageUrl)
                             .toList();
             return new Draft(
-                    a.getId(),
-                    a.getVerificationToken(),
-                    a.getRegistrationStatus().getDbValue(),
-                    a.getName(),
-                    a.getAge(),
-                    a.getGender() != null ? a.getGender().getDbValue() : null,
-                    a.getJob(),
-                    a.getIntro(),
-                    a.getMbti(),
-                    a.getHobbies(),
-                    a.getPhoneNumber(),
-                    a.getKakaoId(),
-                    a.getInstagramId(),
+                    p.getId(),
+                    p.getUploadToken(),
+                    p.getStatus().name(),
+                    p.getName(),
+                    p.getAge(),
+                    p.getGender() != null ? p.getGender().getDbValue() : null,
+                    p.getOccupation(),
+                    p.getIntroduction(),
+                    p.getMbti(),
+                    p.getHobby(),
+                    phoneNumber,
+                    p.getKakaoId(),
+                    p.getInstagramId(),
                     photos
             );
         }
@@ -55,7 +55,7 @@ public record FormPrefillResponse(Draft draft) {
         return new FormPrefillResponse(null);
     }
 
-    public static FormPrefillResponse of(Acquaintance a) {
-        return new FormPrefillResponse(Draft.from(a));
+    public static FormPrefillResponse of(DatingProfile p, String phoneNumber) {
+        return new FormPrefillResponse(Draft.from(p, phoneNumber));
     }
 }
