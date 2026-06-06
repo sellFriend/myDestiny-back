@@ -41,7 +41,10 @@ public class PhoneVerificationService {
     @Transactional
     public void sendOtp(String userId, PhoneVerificationSendRequest req) {
         // 초대 유효성 확인
-        invitationService.findValidInvitation(req.invitationToken());
+        Invitation invitation = invitationService.findValidInvitation(req.invitationToken());
+
+        // 등록자(마담) 본인은 초대를 진행할 수 없음 — 진입 시점 차단
+        assertNotRegistrant(invitation.getProfile(), userId, req.phone());
 
         // TODO: 테스트 완료 후 아래 한도 검사 재활성화
         // long todayCount = verificationRepository.countByUserIdAndCreatedAtAfter(
@@ -79,6 +82,9 @@ public class PhoneVerificationService {
         Invitation invitation = invitationService.findValidInvitation(req.invitationToken());
         DatingProfile profile = invitation.getProfile();
 
+        // 등록자(마담) 본인 차단 — sendOtp에서 1차 차단, 여기서도 방어
+        assertNotRegistrant(profile, userId, req.phone());
+
         // 1. 번호가 A가 등록한 번호와 일치하는지 확인
         if (!phoneHashUtil.matches(req.phone(), profile.getSubjectPhoneHash())) {
             throw new BusinessException("등록된 전화번호와 일치하지 않습니다.", HttpStatus.FORBIDDEN);
@@ -115,17 +121,24 @@ public class PhoneVerificationService {
         subject.updatePhoneNumber(phoneHashUtil.hash(req.phone()), phoneEncryptionUtil.encrypt(normalized));
         userRepository.save(subject);
 
-        // 5. 동일인 감지: 로그인 계정이 등록자와 같거나, 번호가 등록자 번호와 일치
-        boolean isSamePerson = profile.getRegistrant().getId().equals(userId)
-                || (profile.getRegistrant().getPhoneNumberHash() != null
-                    && phoneHashUtil.matches(req.phone(), profile.getRegistrant().getPhoneNumberHash()));
-
-        // 6. subject 연결 + 상태 전이
-        profile.linkSubject(subject, isSamePerson);
+        // 5. subject 연결 (동일인 케이스는 진입 시점에 모두 차단됨 → 항상 정상 승인 대기)
+        profile.linkSubject(subject, false);
         profileRepository.save(profile);
 
         // 초대 링크는 승인/거절 시점에 markUsed() — 여기서는 유지
 
         return new OtpVerifyResponse(profile.getId(), profile.getStatus().name());
+    }
+
+    // 등록자(마담) 본인은 초대를 진행할 수 없음 — 같은 카카오 계정이거나 등록자와 동일한 전화번호인 경우 차단
+    private void assertNotRegistrant(DatingProfile profile, String userId, String phone) {
+        User registrant = profile.getRegistrant();
+        if (registrant.getId().equals(userId)) {
+            throw new BusinessException("본인 계정으로는 초대를 진행할 수 없습니다.", HttpStatus.FORBIDDEN);
+        }
+        if (registrant.getPhoneNumberHash() != null
+                && phoneHashUtil.matches(phone, registrant.getPhoneNumberHash())) {
+            throw new BusinessException("등록자 본인 번호로는 초대를 진행할 수 없습니다.", HttpStatus.FORBIDDEN);
+        }
     }
 }
