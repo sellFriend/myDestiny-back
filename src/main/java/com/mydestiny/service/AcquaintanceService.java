@@ -45,10 +45,14 @@ public class AcquaintanceService {
 
     // 마담 자신의 영구 폼 링크 반환
     // 요청 Origin 이 허용 목록에 있으면 그 도메인 기준으로, 아니면 설정값으로 링크 생성
+    // 현재 매물로 등록된 사람(삭제되지 않은 acquaintance)은 주선자 역할 불가
     @Transactional(readOnly = true)
     public InviteResponse getFormLink(String userId, String requestOrigin) {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+        }
+        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(userId)) {
+            throw new BusinessException("매물로 등록된 사용자는 주선자 역할을 할 수 없습니다.", HttpStatus.FORBIDDEN);
         }
         return new InviteResponse(resolveFormBaseUrl(requestOrigin) + "/" + userId);
     }
@@ -62,7 +66,7 @@ public class AcquaintanceService {
     }
 
     // 친구가 폼 진입 시 — 마담 존재 검증 + 본인의 기존 작성분 있으면 prefill 데이터 반환
-    // 로그인 상태로 자신의 폼을 연 경우(마담==로그인 사용자)는 차단
+    // 차단: 본인 폼, 이미 주선자인 사람, 이미 다른 마담의 지인으로 등록된 사람
     @Transactional(readOnly = true)
     public FormPrefillResponse getFormState(String madamId, String friendUserId) {
         if (!userRepository.existsById(madamId)) {
@@ -74,10 +78,19 @@ public class AcquaintanceService {
         if (friendUserId == null) {
             return FormPrefillResponse.empty();
         }
-        return acquaintanceRepository
+        if (acquaintanceRepository.existsByUserIdAndDeletedAtIsNull(friendUserId)) {
+            throw new BusinessException("주선자는 지인으로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
+        Acquaintance existing = acquaintanceRepository
                 .findByUserIdAndFriendUserIdAndDeletedAtIsNull(madamId, friendUserId)
-                .map(FormPrefillResponse::of)
-                .orElseGet(FormPrefillResponse::empty);
+                .orElse(null);
+        if (existing != null) {
+            return FormPrefillResponse.of(existing);
+        }
+        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(friendUserId)) {
+            throw new BusinessException("이미 다른 주선자를 통해 등록되어 있습니다.", HttpStatus.BAD_REQUEST);
+        }
+        return FormPrefillResponse.empty();
     }
 
     // 친구(매물)가 카카오 로그인 후 프로필 제출 또는 수정 재제출
@@ -92,6 +105,10 @@ public class AcquaintanceService {
 
         User friend = userRepository.findById(friendUserId)
                 .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+
+        if (acquaintanceRepository.existsByUserIdAndDeletedAtIsNull(friendUserId)) {
+            throw new BusinessException("주선자는 지인으로 등록될 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
 
         Gender gender = req.gender() != null ? Gender.fromDb(req.gender()) : null;
 
@@ -114,7 +131,12 @@ public class AcquaintanceService {
             return new FormDataResponse(existing.getId(), existing.getVerificationToken(), existing.getRegistrationStatus().getDbValue());
         }
 
-        // 신규 생성 시에만 전화번호 중복 체크 (다른 마담을 통해 이미 VERIFIED인 번호 차단)
+        // 신규 생성 시 — 다른 마담의 지인으로 이미 등록됐는지 차단
+        if (acquaintanceRepository.existsByFriendUserIdAndDeletedAtIsNull(friendUserId)) {
+            throw new BusinessException("이미 다른 주선자를 통해 등록되어 있습니다.", HttpStatus.CONFLICT);
+        }
+
+        // 전화번호 중복 체크 (다른 마담을 통해 이미 VERIFIED인 번호 차단)
         if (acquaintanceRepository.existsByPhoneNumberAndRegistrationStatus(
                 req.phoneNumber(), RegistrationStatus.VERIFIED)) {
             throw new BusinessException("이미 다른 마담을 통해 등록 완료된 번호입니다.", HttpStatus.CONFLICT);
