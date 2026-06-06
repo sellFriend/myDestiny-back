@@ -2,8 +2,10 @@ package com.mydestiny.dto.matching;
 
 import com.mydestiny.domain.DatingProfile;
 import com.mydestiny.domain.Matching;
+import com.mydestiny.domain.ProfilePhoto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record MatchingResponse(
         String id,
@@ -18,7 +20,7 @@ public record MatchingResponse(
         LocalDateTime receiverRespondedAt,
         LocalDateTime receiverExpiresAt
 ) {
-    public record ProfileSummary(String id, String name, String gender) {}
+    public record ProfileSummary(String id, String name, String gender, List<String> photoUrls) {}
 
     public static MatchingResponse from(Matching m) {
         return new MatchingResponse(
@@ -40,7 +42,8 @@ public record MatchingResponse(
         return new ProfileSummary(
                 p.getId(),
                 p.getName(),
-                p.getGender() != null ? p.getGender().getDbValue() : null
+                p.getGender() != null ? p.getGender().getDbValue() : null,
+                p.getPhotos().stream().map(ProfilePhoto::getImageUrl).toList()
         );
     }
 }

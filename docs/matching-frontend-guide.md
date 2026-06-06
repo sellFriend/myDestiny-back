@@ -63,8 +63,14 @@
 ```json
 {
   "id": "matching-uuid",
-  "requesterProfile": { "id": "profile-B-uuid", "name": "민수", "gender": "MALE" },
-  "targetProfile":    { "id": "profile-D-uuid", "name": "지은", "gender": "FEMALE" },
+  "requesterProfile": {
+    "id": "profile-B-uuid", "name": "민수", "gender": "MALE",
+    "photoUrls": ["https://.../b-1.jpg", "https://.../b-2.jpg"]
+  },
+  "targetProfile": {
+    "id": "profile-D-uuid", "name": "지은", "gender": "FEMALE",
+    "photoUrls": ["https://.../d-1.jpg"]
+  },
   "requesterNickname": "A의 닉네임",
   "receiverNickname":  "C의 닉네임",
   "status": "PENDING",
@@ -78,7 +84,8 @@
 
 | 필드 | 설명 |
 |------|------|
-| `requesterProfile` / `targetProfile` | 친구 프로필 요약 (`id`, `name`, `gender`). `gender`: `MALE` \| `FEMALE` |
+| `requesterProfile` / `targetProfile` | 친구 프로필 요약 (`id`, `name`, `gender`, `photoUrls`). `gender`: `MALE` \| `FEMALE` |
+| `requesterProfile.photoUrls` / `targetProfile.photoUrls` | 프로필 사진 URL **문자열 배열**. 사진이 없으면 빈 배열 `[]` (null 아님). 정렬 순서는 보장되지 않음 |
 | `requesterNickname` / `receiverNickname` | 주선자(A/C) 닉네임 |
 | `status` | `MatchingStatus` (아래 표) |
 | `rejectReason` | 거절 사유. 거절 전이거나 미입력이면 `null` |
