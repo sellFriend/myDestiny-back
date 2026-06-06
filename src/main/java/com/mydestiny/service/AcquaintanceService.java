@@ -152,8 +152,9 @@ public class AcquaintanceService {
             }
 
             existing.resubmitByFriend(
-                    req.name(), req.age(), req.gender(), req.job(), req.intro(),
-                    req.mbti(), req.hobbies(), req.kakaoId(), req.instagramId(),
+                    req.name(), req.age(), req.gender(),
+                    Boolean.TRUE.equals(req.isStudent()), req.schoolName(), req.major(), req.job(),
+                    req.intro(), req.mbti(), req.hobbies(), req.kakaoId(), req.instagramId(),
                     phoneHash, phoneEncrypted, phoneLookup
             );
             profileRepository.save(existing);
@@ -180,6 +181,9 @@ public class AcquaintanceService {
                 .name(req.name())
                 .age(req.age())
                 .gender(req.gender() != null ? com.mydestiny.domain.enums.Gender.fromDb(req.gender()) : null)
+                .isStudent(Boolean.TRUE.equals(req.isStudent()))
+                .schoolName(req.schoolName())
+                .major(req.major())
                 .occupation(req.job())
                 .introduction(req.intro())
                 .mbti(req.mbti())
