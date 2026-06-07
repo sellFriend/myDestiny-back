@@ -278,10 +278,11 @@ public class DatingProfile {
         this.status = ProfileStatus.DRAFT;
     }
 
-    // 주선자가 거절 — 승인 대기 상태에서만 가능 (이미 승인/매칭된 카드는 거절 불가)
+    // 주선자가 거절 — 승인 대기/작성 중 상태에서만 가능 (이미 승인/매칭된 카드는 거절 불가)
     public void rejectByRegistrant() {
-        if (this.status != ProfileStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("승인 대기 상태에서만 거절할 수 있습니다.");
+        if (this.status != ProfileStatus.PENDING_APPROVAL
+                && this.status != ProfileStatus.DRAFT) {
+            throw new IllegalStateException("승인 대기 또는 작성 중 상태에서만 거절할 수 있습니다.");
         }
         this.status = ProfileStatus.DELETED;
         this.deletedAt = LocalDateTime.now();
