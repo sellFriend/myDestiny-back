@@ -40,6 +40,8 @@ public class NotificationService {
         return notificationRepository
                 .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId)
                 .stream()
+                // verification_done은 DB에는 기록하되 API 응답에서는 제외
+                .filter(notification -> notification.getType() != NotificationType.VERIFICATION_DONE)
                 .map(NotificationResponse::from)
                 .toList();
     }
