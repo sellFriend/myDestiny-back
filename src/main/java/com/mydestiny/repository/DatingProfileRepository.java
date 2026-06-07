@@ -18,7 +18,20 @@ public interface DatingProfileRepository extends JpaRepository<DatingProfile, St
 
     Optional<DatingProfile> findByIdAndStatusNot(String id, ProfileStatus status);
 
-    List<DatingProfile> findByStatusOrderByPublishedAtDesc(ProfileStatus status);
+    // 공개 프로필 목록 — 매칭 점유(진행 중·성사) 상태인 프로필 제외
+    @Query("""
+            SELECT p FROM DatingProfile p
+            WHERE p.status = :status
+              AND NOT EXISTS (
+                  SELECT 1 FROM Matching m
+                  WHERE m.status IN :occupiedStatuses
+                    AND (m.requesterProfile.id = p.id OR m.targetProfile.id = p.id)
+              )
+            ORDER BY p.publishedAt DESC
+            """)
+    List<DatingProfile> findPublishedExcludingOccupied(
+            @Param("status") ProfileStatus status,
+            @Param("occupiedStatuses") List<MatchingStatus> occupiedStatuses);
 
     long countByRegistrantIdAndStatus(String registrantId, ProfileStatus status);
 
