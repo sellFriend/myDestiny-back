@@ -5,6 +5,7 @@ import com.mydestiny.domain.DatingProfile;
 public record PublicProfileResponse(
         String id,
         String registrantId,
+        String registrantNickname,
         String name,
         Integer age,
         String gender,
@@ -22,6 +23,7 @@ public record PublicProfileResponse(
         return new PublicProfileResponse(
                 p.getId(),
                 p.getRegistrant().getId(),
+                p.getRegistrant().getNickname(),
                 p.getName(),
                 p.getAge(),
                 p.getGender() != null ? p.getGender().getDbValue() : null,
