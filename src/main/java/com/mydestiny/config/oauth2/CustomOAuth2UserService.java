@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -39,11 +40,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 : (email != null ? email.split("@")[0] : kakaoId);
         String profileImageUrl = (profile != null) ? (String) profile.get("profile_image_url") : null;
 
-        User user = userRepository.findByKakaoId(kakaoId)
+        String userId = userRepository.findByKakaoId(kakaoId)
                 .map(existing -> {
-                    existing.updateLastLogin();
-                    if (profileImageUrl != null) existing.updateKakaoProfileImage(profileImageUrl);
-                    return userRepository.save(existing);
+                    userRepository.touchLogin(existing.getId(), profileImageUrl, LocalDateTime.now());
+                    return existing.getId();
                 })
                 .orElseGet(() -> userRepository.save(
                         User.builder()
@@ -52,8 +52,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                                 .nickname(nickname)
                                 .kakaoProfileImageUrl(profileImageUrl)
                                 .build()
-                ));
+                ).getId());
 
-        return new CustomOAuth2User(user.getId(), attributes);
+        return new CustomOAuth2User(userId, attributes);
     }
 }
