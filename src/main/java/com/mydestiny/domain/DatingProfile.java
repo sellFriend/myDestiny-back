@@ -277,6 +277,15 @@ public class DatingProfile {
         this.status = ProfileStatus.DRAFT;
     }
 
+    // 주선자가 거절 — 승인 대기 상태에서만 가능 (이미 승인/매칭된 카드는 거절 불가)
+    public void rejectByRegistrant() {
+        if (this.status != ProfileStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("승인 대기 상태에서만 거절할 수 있습니다.");
+        }
+        this.status = ProfileStatus.DELETED;
+        this.deletedAt = LocalDateTime.now();
+    }
+
     // 친구가 폼 재방문 후 수정 제출 — 필드 갱신 + 상태를 다시 승인 대기로 복귀
     public void resubmitByFriend(String name, Integer age, String gender,
                                  boolean isStudent, String schoolName, String major, String occupation,
