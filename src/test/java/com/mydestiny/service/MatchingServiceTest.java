@@ -23,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -180,6 +181,24 @@ class MatchingServiceTest {
             assertThatThrownBy(() -> matchingService.createMatching("user-a", validRequest()))
                     .isInstanceOf(BusinessException.class)
                     .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("매칭 성사된 프로필로는 다른 사람에게 요청을 보낼 수 없다 (점유 검사에 MATCHED 포함)")
+        void failProfileAlreadyMatched() {
+            given(profileRepository.findById("profile-b")).willReturn(Optional.of(requesterProfile));
+            given(profileRepository.findById("profile-d")).willReturn(Optional.of(targetProfile));
+            given(matchingRepository.existsActiveMatchBetween(anyString(), anyString(), anyList())).willReturn(false);
+            ArgumentCaptor<List<MatchingStatus>> statusCaptor = ArgumentCaptor.forClass(List.class);
+            // 이미 매칭 성사된 내 친구 프로필
+            given(matchingRepository.isProfileInActiveMatch(eq("profile-b"), anyList())).willReturn(true);
+
+            assertThatThrownBy(() -> matchingService.createMatching("user-a", validRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+
+            verify(matchingRepository).isProfileInActiveMatch(eq("profile-b"), statusCaptor.capture());
+            assertThat(statusCaptor.getValue()).contains(MatchingStatus.MATCHED);
         }
 
         @Test
