@@ -38,6 +38,15 @@ public class MatchingService {
             MatchingStatus.CONSENT_PARTIALLY_APPROVED
     );
 
+    // 프로필 점유 상태: 진행 중 매칭 + 성사된 매칭 (한 프로필은 동시에 하나의 매칭만)
+    private static final List<MatchingStatus> OCCUPIED_STATUSES = List.of(
+            MatchingStatus.PENDING,
+            MatchingStatus.ACCEPTED_BY_RECEIVER,
+            MatchingStatus.CONSENT_PENDING,
+            MatchingStatus.CONSENT_PARTIALLY_APPROVED,
+            MatchingStatus.MATCHED
+    );
+
     // 30일 쿨다운 적용 대상: 수신자 거절 + 당사자 거절 모두 포함
     private static final List<MatchingStatus> COOLDOWN_STATUSES = List.of(
             MatchingStatus.REJECTED_BY_RECEIVER,
@@ -86,12 +95,12 @@ public class MatchingService {
                 req.requesterProfileId(), req.targetProfileId(), ACTIVE_STATUSES)) {
             throw new BusinessException("이미 진행 중인 매칭 요청이 있습니다.", HttpStatus.CONFLICT);
         }
-        // 프로필 당 1개 활성 매칭 제한 (B 또는 D가 이미 다른 매칭 중)
-        if (matchingRepository.isProfileInActiveMatch(req.requesterProfileId(), ACTIVE_STATUSES)) {
-            throw new BusinessException("내 친구 프로필이 이미 다른 매칭 진행 중입니다.", HttpStatus.CONFLICT);
+        // 프로필 당 1개 매칭 제한 (B 또는 D가 이미 진행 중이거나 성사된 매칭에 참여)
+        if (matchingRepository.isProfileInActiveMatch(req.requesterProfileId(), OCCUPIED_STATUSES)) {
+            throw new BusinessException("내 친구 프로필이 이미 다른 매칭에 참여 중입니다.", HttpStatus.CONFLICT);
         }
-        if (matchingRepository.isProfileInActiveMatch(req.targetProfileId(), ACTIVE_STATUSES)) {
-            throw new BusinessException("상대 친구 프로필이 이미 다른 매칭 진행 중입니다.", HttpStatus.CONFLICT);
+        if (matchingRepository.isProfileInActiveMatch(req.targetProfileId(), OCCUPIED_STATUSES)) {
+            throw new BusinessException("상대 친구 프로필이 이미 다른 매칭에 참여 중입니다.", HttpStatus.CONFLICT);
         }
         // V6: 30일 쿨다운 (수신자 거절 + 당사자 거절 모두 포함)
         if (matchingRepository.existsRecentRejection(
