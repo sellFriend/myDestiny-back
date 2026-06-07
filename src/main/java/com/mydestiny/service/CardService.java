@@ -1,6 +1,7 @@
 package com.mydestiny.service;
 
 import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.enums.MatchingStatus;
 import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.domain.enums.ProfileVisibility;
 import com.mydestiny.dto.card.CardDetailResponse;
@@ -23,7 +24,7 @@ public class CardService {
     @Transactional(readOnly = true)
     public List<CardListResponse> getCards(String userId) {
         return profileRepository
-                .findAvailableCards(ProfileStatus.PUBLISHED, ProfileVisibility.PUBLIC, userId)
+                .findAvailableCards(ProfileStatus.PUBLISHED, ProfileVisibility.PUBLIC, userId, MatchingStatus.MATCHED)
                 .stream()
                 .map(CardListResponse::from)
                 .toList();

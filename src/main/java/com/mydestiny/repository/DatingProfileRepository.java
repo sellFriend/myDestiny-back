@@ -1,6 +1,7 @@
 package com.mydestiny.repository;
 
 import com.mydestiny.domain.DatingProfile;
+import com.mydestiny.domain.enums.MatchingStatus;
 import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.domain.enums.ProfileVisibility;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,7 +39,7 @@ public interface DatingProfileRepository extends JpaRepository<DatingProfile, St
     // 같은 전화번호(blind index)로 이미 승인 완료된 프로필이 있는지 — 번호 중복 차단
     boolean existsBySubjectPhoneLookupAndStatus(String subjectPhoneLookup, ProfileStatus status);
 
-    // 카드 목록 — 공개된 프로필 중 본인 관련/차단 제외
+    // 카드 목록 — 공개된 프로필 중 본인 관련/차단/매칭 성사 제외
     @Query("""
             SELECT p FROM DatingProfile p
             WHERE p.status = :status
@@ -49,10 +50,16 @@ public interface DatingProfileRepository extends JpaRepository<DatingProfile, St
               AND p.id NOT IN (
                   SELECT b.blockedAcquaintanceId FROM Block b WHERE b.blockerUserId = :userId
               )
+              AND NOT EXISTS (
+                  SELECT 1 FROM Matching m
+                  WHERE m.status = :matchedStatus
+                    AND (m.requesterProfile.id = p.id OR m.targetProfile.id = p.id)
+              )
             ORDER BY RAND()
             """)
     List<DatingProfile> findAvailableCards(
             @Param("status") ProfileStatus status,
             @Param("visibility") ProfileVisibility visibility,
-            @Param("userId") String userId);
+            @Param("userId") String userId,
+            @Param("matchedStatus") MatchingStatus matchedStatus);
 }
