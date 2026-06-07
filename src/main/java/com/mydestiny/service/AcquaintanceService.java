@@ -294,14 +294,20 @@ public class AcquaintanceService {
             throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
         }
         profileRepository.save(profile);
+        notificationService.markResolved(userId, NotificationType.FORM_SUBMITTED, profileId);
         notificationService.create(userId, NotificationType.VERIFICATION_DONE, profileId);
     }
 
     @Transactional
     public void reject(String profileId, String userId) {
         DatingProfile profile = findOwnedProfile(profileId, userId);
-        profile.softDelete();
+        try {
+            profile.rejectByRegistrant();
+        } catch (IllegalStateException e) {
+            throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
+        }
         profileRepository.save(profile);
+        notificationService.markResolved(userId, NotificationType.FORM_SUBMITTED, profileId);
     }
 
     @Transactional
@@ -331,6 +337,7 @@ public class AcquaintanceService {
             throw new BusinessException(e.getMessage(), HttpStatus.CONFLICT);
         }
         profileRepository.save(profile);
+        notificationService.markResolved(userId, NotificationType.FORM_SUBMITTED, profileId);
         if (profile.getSubject() != null) {
             notificationService.create(
                     profile.getSubject().getId(),

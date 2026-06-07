@@ -44,6 +44,15 @@ public class NotificationService {
                 .toList();
     }
 
+    // 종결된 액션의 미읽음 알림을 읽음 처리 — 종결된 카드에 알림으로 재진입하는 것을 차단
+    @Transactional
+    public void markResolved(String userId, NotificationType type, String targetId) {
+        List<Notification> notifications = notificationRepository
+                .findByUserIdAndMatchingIdAndTypeAndIsReadFalse(userId, targetId, type);
+        notifications.forEach(Notification::markAsRead);
+        notificationRepository.saveAll(notifications);
+    }
+
     @Transactional
     public void markAsRead(String notificationId, String userId) {
         Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
