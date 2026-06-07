@@ -3,6 +3,7 @@ package com.mydestiny.config;
 import com.mydestiny.config.jwt.JwtAuthenticationFilter;
 import com.mydestiny.config.oauth2.CustomOAuth2AuthorizationRequestResolver;
 import com.mydestiny.config.oauth2.CustomOAuth2UserService;
+import com.mydestiny.config.oauth2.OAuth2FailureHandler;
 import com.mydestiny.config.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,7 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
     private final CustomOAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AcquaintanceStatusFilter acquaintanceStatusFilter;
@@ -43,7 +45,8 @@ public class SecurityConfig {
                 .authorizationEndpoint(endpoint -> endpoint
                     .authorizationRequestResolver(authorizationRequestResolver))
                 .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
-                .successHandler(oAuth2SuccessHandler));
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler));
 
         return http.build();
     }
