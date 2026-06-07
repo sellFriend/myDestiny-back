@@ -1,5 +1,7 @@
 package com.mydestiny.domain.enums;
 
+import java.util.List;
+
 public enum MatchingStatus {
     PENDING,                     // 요청자가 요청 전송, 수신자 미응답
     CANCELLED,                   // 요청자가 취소 (PENDING에서만 가능)
@@ -10,5 +12,14 @@ public enum MatchingStatus {
     CONSENT_PARTIALLY_APPROVED,  // 한 명만 동의 완료
     CONSENT_REJECTED,            // 당사자 중 한 명 거절
     CONSENT_EXPIRED,             // 당사자 동의 기한 초과
-    MATCHED                      // 양쪽 모두 동의, 매칭 성사
+    MATCHED;                     // 양쪽 모두 동의, 매칭 성사
+
+    // 프로필 점유 상태: 진행 중 매칭 + 성사된 매칭 (한 프로필은 동시에 하나의 매칭만)
+    public static final List<MatchingStatus> OCCUPIED = List.of(
+            PENDING,
+            ACCEPTED_BY_RECEIVER,
+            CONSENT_PENDING,
+            CONSENT_PARTIALLY_APPROVED,
+            MATCHED
+    );
 }

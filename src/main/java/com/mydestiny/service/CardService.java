@@ -24,7 +24,7 @@ public class CardService {
     @Transactional(readOnly = true)
     public List<CardListResponse> getCards(String userId) {
         return profileRepository
-                .findAvailableCards(ProfileStatus.PUBLISHED, ProfileVisibility.PUBLIC, userId, MatchingStatus.MATCHED)
+                .findAvailableCards(ProfileStatus.PUBLISHED, ProfileVisibility.PUBLIC, userId, MatchingStatus.OCCUPIED)
                 .stream()
                 .map(CardListResponse::from)
                 .toList();
