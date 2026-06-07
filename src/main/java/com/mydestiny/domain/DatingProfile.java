@@ -209,8 +209,9 @@ public class DatingProfile {
     }
 
     public void approve() {
-        if (this.status != ProfileStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("PENDING_APPROVAL 상태에서만 승인할 수 있습니다.");
+        if (this.status != ProfileStatus.PENDING_APPROVAL
+                && this.status != ProfileStatus.DRAFT) {
+            throw new IllegalStateException("DRAFT 또는 PENDING_APPROVAL 상태에서만 승인할 수 있습니다.");
         }
         this.status = ProfileStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
