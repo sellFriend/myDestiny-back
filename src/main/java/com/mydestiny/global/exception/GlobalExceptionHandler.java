@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,6 +26,11 @@ public class GlobalExceptionHandler {
             .findFirst()
             .orElse("입력값이 유효하지 않습니다.");
         return ResponseEntity.badRequest().body(ApiResponse.fail(message));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(413).body(ApiResponse.fail("사진 용량이 너무 큽니다. 더 작은 사진을 올려주세요."));
     }
 
     @ExceptionHandler(UnsupportedOperationException.class)
