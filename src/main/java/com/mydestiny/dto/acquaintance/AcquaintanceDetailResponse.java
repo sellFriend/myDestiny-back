@@ -16,6 +16,7 @@ public record AcquaintanceDetailResponse(
         String mbti,
         String hobbies,
         String registrationStatus,
+        String visibility,
         LocalDateTime verifiedAt,
         List<String> photoUrls
 ) {
@@ -30,6 +31,7 @@ public record AcquaintanceDetailResponse(
                 p.getGender() != null ? p.getGender().getDbValue() : null,
                 p.getOccupation(), p.getIntroduction(), p.getMbti(), p.getHobby(),
                 p.getStatus().name(),
+                p.getVisibility() != null ? p.getVisibility().name() : null,
                 p.getPublishedAt(), photos
         );
     }
