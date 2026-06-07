@@ -4,6 +4,7 @@ import com.mydestiny.domain.DatingProfile;
 
 public record PublicProfileResponse(
         String id,
+        String registrantId,
         String name,
         Integer age,
         String gender,
@@ -20,6 +21,7 @@ public record PublicProfileResponse(
         String photo = p.getPhotos().isEmpty() ? null : p.getPhotos().get(0).getImageUrl();
         return new PublicProfileResponse(
                 p.getId(),
+                p.getRegistrant().getId(),
                 p.getName(),
                 p.getAge(),
                 p.getGender() != null ? p.getGender().getDbValue() : null,
