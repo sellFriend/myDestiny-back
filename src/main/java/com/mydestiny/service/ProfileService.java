@@ -4,6 +4,7 @@ import com.mydestiny.domain.DatingProfile;
 import com.mydestiny.domain.ProfilePhoto;
 import com.mydestiny.domain.User;
 import com.mydestiny.domain.enums.Gender;
+import com.mydestiny.domain.enums.MatchingStatus;
 import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.domain.enums.ProfileVisibility;
 import com.mydestiny.dto.profile.ProfileCreateRequest;
@@ -74,7 +75,7 @@ public class ProfileService {
         var mutualFollowIds = followService.getMutualFollowIds(currentUserId);
         Gender genderFilter = gender != null ? Gender.fromDb(gender) : null;
 
-        return profileRepository.findByStatusOrderByPublishedAtDesc(ProfileStatus.PUBLISHED)
+        return profileRepository.findPublishedExcludingOccupied(ProfileStatus.PUBLISHED, MatchingStatus.OCCUPIED)
                 .stream()
                 .filter(p -> registrantId != null
                         ? p.getRegistrant().getId().equals(registrantId)
