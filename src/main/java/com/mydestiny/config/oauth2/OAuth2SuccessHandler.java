@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
@@ -31,7 +30,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private List<String> allowedRedirectUris;
 
     @Override
-    @Transactional
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
@@ -40,13 +38,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String accessToken = jwtTokenProvider.generateAccessToken(userId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
-        String[] profileImageUrl = {null};
-        userRepository.findById(userId).ifPresent(user -> {
-            user.updateRefreshToken(refreshToken,
-                    LocalDateTime.now().plusSeconds(jwtTokenProvider.getRefreshTokenExpirySeconds()));
-            userRepository.save(user);
-            profileImageUrl[0] = user.getKakaoProfileImageUrl();
-        });
+        LocalDateTime now = LocalDateTime.now();
+        userRepository.updateRefreshToken(userId, refreshToken,
+                now.plusSeconds(jwtTokenProvider.getRefreshTokenExpirySeconds()), now);
+        String profileImageUrl = userRepository.findKakaoProfileImageUrlById(userId).orElse(null);
 
         String targetRedirectUri = resolveRedirectUri(request);
 
@@ -54,8 +49,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .queryParam("accessToken", accessToken)
                 .queryParam("refreshToken", refreshToken)
                 .queryParam("userId", userId);
-        if (profileImageUrl[0] != null) {
-            builder.queryParam("profileImageUrl", profileImageUrl[0]);
+        if (profileImageUrl != null) {
+            builder.queryParam("profileImageUrl", profileImageUrl);
         }
         String targetUrl = builder.build().toUriString();
 
