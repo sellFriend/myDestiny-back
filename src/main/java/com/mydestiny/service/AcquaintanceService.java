@@ -279,9 +279,16 @@ public class AcquaintanceService {
 
     @Transactional(readOnly = true)
     public List<AcquaintanceDetailResponse> getMyAcquaintances(String userId) {
-        return profileRepository.findByRegistrantIdAndStatusNotOrderByCreatedAtDesc(userId, ProfileStatus.DELETED)
-                .stream()
-                .map(AcquaintanceDetailResponse::from)
+        List<DatingProfile> profiles = profileRepository
+                .findByRegistrantIdAndStatusNotOrderByCreatedAtDesc(userId, ProfileStatus.DELETED);
+        if (profiles.isEmpty()) {
+            return List.of();
+        }
+        List<String> profileIds = profiles.stream().map(DatingProfile::getId).toList();
+        java.util.Set<String> matchedIds = new java.util.HashSet<>(
+                matchingRepository.findProfileIdsWithStatus(profileIds, MatchingStatus.MATCHED));
+        return profiles.stream()
+                .map(p -> AcquaintanceDetailResponse.from(p, matchedIds.contains(p.getId())))
                 .toList();
     }
 

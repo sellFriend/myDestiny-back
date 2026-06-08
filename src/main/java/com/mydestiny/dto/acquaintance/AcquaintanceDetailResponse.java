@@ -17,10 +17,11 @@ public record AcquaintanceDetailResponse(
         String hobbies,
         String registrationStatus,
         String visibility,
+        boolean matched,      // 매칭 성사 여부 (MatchingStatus.MATCHED)
         LocalDateTime verifiedAt,
         List<String> photoUrls
 ) {
-    public static AcquaintanceDetailResponse from(DatingProfile p) {
+    public static AcquaintanceDetailResponse from(DatingProfile p, boolean matched) {
         List<String> photos = p.getPhotos() == null ? List.of() :
                 p.getPhotos().stream()
                         .sorted(java.util.Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
@@ -32,6 +33,7 @@ public record AcquaintanceDetailResponse(
                 p.getOccupation(), p.getIntroduction(), p.getMbti(), p.getHobby(),
                 p.getStatus().name(),
                 p.getVisibility() != null ? p.getVisibility().name() : null,
+                matched,
                 p.getPublishedAt(), photos
         );
     }
