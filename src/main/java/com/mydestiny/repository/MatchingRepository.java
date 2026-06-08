@@ -88,6 +88,20 @@ public interface MatchingRepository extends JpaRepository<Matching, String> {
             @Param("profileIds") List<String> profileIds,
             @Param("status") MatchingStatus status);
 
+    // 보낸(요청자) 측 매칭이 해당 상태로 존재하는 프로필 id 목록
+    @Query("""
+            SELECT DISTINCT p.id FROM DatingProfile p
+            WHERE p.id IN :profileIds
+              AND EXISTS (
+                  SELECT 1 FROM Matching m
+                  WHERE m.status = :status
+                    AND m.requesterProfile.id = p.id
+              )
+            """)
+    List<String> findRequesterProfileIdsWithStatus(
+            @Param("profileIds") List<String> profileIds,
+            @Param("status") MatchingStatus status);
+
     // MATCHED 상태 매칭 목록 (요청자 또는 수신자)
     @Query("""
             SELECT m FROM Matching m

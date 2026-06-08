@@ -17,11 +17,12 @@ public record AcquaintanceDetailResponse(
         String hobbies,
         String registrationStatus,
         String visibility,
-        boolean matched,      // 매칭 성사 여부 (MatchingStatus.MATCHED)
+        boolean matched,              // 매칭 성사 여부 (MatchingStatus.MATCHED)
+        boolean hasOutgoingRequest,   // 이 친구가 보낸 매칭 요청이 진행 중인지 (PENDING)
         LocalDateTime verifiedAt,
         List<String> photoUrls
 ) {
-    public static AcquaintanceDetailResponse from(DatingProfile p, boolean matched) {
+    public static AcquaintanceDetailResponse from(DatingProfile p, boolean matched, boolean hasOutgoingRequest) {
         List<String> photos = p.getPhotos() == null ? List.of() :
                 p.getPhotos().stream()
                         .sorted(java.util.Comparator.comparingInt(ProfilePhoto::getDisplayOrder))
@@ -34,6 +35,7 @@ public record AcquaintanceDetailResponse(
                 p.getStatus().name(),
                 p.getVisibility() != null ? p.getVisibility().name() : null,
                 matched,
+                hasOutgoingRequest,
                 p.getPublishedAt(), photos
         );
     }
