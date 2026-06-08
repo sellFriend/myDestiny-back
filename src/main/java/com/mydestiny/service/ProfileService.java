@@ -77,7 +77,7 @@ public class ProfileService {
         var mutualFollowIds = followService.getMutualFollowIds(currentUserId);
         Gender genderFilter = gender != null ? Gender.fromDb(gender) : null;
 
-        return profileRepository.findPublishedExcludingOccupied(ProfileStatus.PUBLISHED, MatchingStatus.OCCUPIED)
+        List<PublicProfileResponse> profiles = profileRepository.findPublishedExcludingOccupied(ProfileStatus.PUBLISHED, MatchingStatus.OCCUPIED)
                 .stream()
                 .filter(p -> registrantId != null
                         ? p.getRegistrant().getId().equals(registrantId)
@@ -89,7 +89,9 @@ public class ProfileService {
                     case PRIVATE -> false;
                 })
                 .map(PublicProfileResponse::from)
-                .toList();
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        java.util.Collections.shuffle(profiles);
+        return profiles;
     }
 
     @Transactional
