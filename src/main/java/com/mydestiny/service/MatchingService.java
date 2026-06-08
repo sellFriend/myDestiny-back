@@ -41,7 +41,7 @@ public class MatchingService {
     // 프로필 점유 상태: 진행 중 매칭 + 성사된 매칭 (한 프로필은 동시에 하나의 매칭만)
     private static final List<MatchingStatus> OCCUPIED_STATUSES = MatchingStatus.OCCUPIED;
 
-    // 30일 쿨다운 적용 대상: 수신자 거절 + 당사자 거절 모두 포함
+    // 7일 쿨다운 적용 대상: 수신자 거절 + 당사자 거절 모두 포함
     private static final List<MatchingStatus> COOLDOWN_STATUSES = List.of(
             MatchingStatus.REJECTED_BY_RECEIVER,
             MatchingStatus.CONSENT_REJECTED
@@ -103,11 +103,11 @@ public class MatchingService {
                     "내 친구 프로필이 이미 다른 매칭 요청을 보낸 상태입니다. 한 번에 한 명에게만 요청할 수 있습니다.",
                     HttpStatus.CONFLICT);
         }
-        // V6: 30일 쿨다운 (수신자 거절 + 당사자 거절 모두 포함)
+        // V6: 7일 쿨다운 (수신자 거절 + 당사자 거절 모두 포함)
         if (matchingRepository.existsRecentRejection(
                 req.requesterProfileId(), req.targetProfileId(),
-                COOLDOWN_STATUSES, LocalDateTime.now().minusDays(30))) {
-            throw new BusinessException("최근 30일 내 거절된 조합입니다. 30일 후 재요청 가능합니다.", HttpStatus.CONFLICT);
+                COOLDOWN_STATUSES, LocalDateTime.now().minusDays(7))) {
+            throw new BusinessException("최근 7일 내 거절된 조합입니다. 7일 후 재요청 가능합니다.", HttpStatus.CONFLICT);
         }
         // TODO: 테스트 완료 후 아래 한도 검사 재활성화
         // LocalDateTime todayStart = LocalDate.now().atStartOfDay();
