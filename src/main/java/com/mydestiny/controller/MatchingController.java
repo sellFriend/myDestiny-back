@@ -73,6 +73,15 @@ public class MatchingController {
         return ApiResponse.ok(null);
     }
 
+    @PostMapping("/{id}/cancel-match")
+    public ApiResponse<MatchingResponse> cancelMatchedMatching(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String id,
+            @Valid @RequestBody(required = false) MatchingCancelRequest request) {
+        String reason = request != null ? request.reason() : null;
+        return ApiResponse.ok(matchingService.cancelMatchedMatching(id, userId, reason));
+    }
+
     @GetMapping("/{id}/contact")
     public ApiResponse<ContactResponse> getContact(
             @AuthenticationPrincipal String userId,

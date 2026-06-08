@@ -425,4 +425,77 @@ class MatchingServiceTest {
                     .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
         }
     }
+
+    // ────── cancelMatchedMatching ──────
+
+    @Nested
+    @DisplayName("cancelMatchedMatching")
+    class CancelMatchedMatching {
+
+        private Matching matchedMatching() {
+            return Matching.builder()
+                    .id("match-1").requester(requester).receiver(receiver)
+                    .requesterProfile(requesterProfile).targetProfile(targetProfile)
+                    .status(MatchingStatus.MATCHED)
+                    .receiverExpiresAt(LocalDateTime.now().plusHours(48))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("요청자가 성사된 매칭 취소 시 CANCELLED_AFTER_MATCH로 전이되고 수신자에게 알림 발송")
+        void successByRequester() {
+            Matching matching = matchedMatching();
+            given(matchingRepository.findById("match-1")).willReturn(Optional.of(matching));
+            given(matchingRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(matchLogRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            MatchingResponse result = matchingService.cancelMatchedMatching("match-1", "user-a", "사정이 생겼어요");
+
+            assertThat(result.status()).isEqualTo(MatchingStatus.CANCELLED_AFTER_MATCH.name());
+            assertThat(matching.getCancelledBy().getId()).isEqualTo("user-a");
+            verify(notificationService).create(eq("user-c"), eq(NotificationType.MATCH_RELEASED), eq("match-1"));
+            verify(notificationService, never()).create(eq("user-a"), any(), any());
+        }
+
+        @Test
+        @DisplayName("수신자가 성사된 매칭 취소 시 요청자에게 알림 발송")
+        void successByReceiver() {
+            Matching matching = matchedMatching();
+            given(matchingRepository.findById("match-1")).willReturn(Optional.of(matching));
+            given(matchingRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(matchLogRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            matchingService.cancelMatchedMatching("match-1", "user-c", null);
+
+            assertThat(matching.getStatus()).isEqualTo(MatchingStatus.CANCELLED_AFTER_MATCH);
+            assertThat(matching.getCancelledBy().getId()).isEqualTo("user-c");
+            verify(notificationService).create(eq("user-a"), eq(NotificationType.MATCH_RELEASED), eq("match-1"));
+        }
+
+        @Test
+        @DisplayName("당사자가 아닌 사용자가 취소 시 403 예외")
+        void failNotParty() {
+            given(matchingRepository.findById("match-1")).willReturn(Optional.of(matchedMatching()));
+
+            assertThatThrownBy(() -> matchingService.cancelMatchedMatching("match-1", "user-x", null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("MATCHED가 아닌 상태에서 취소 시 409 예외")
+        void failNotMatched() {
+            Matching pending = Matching.builder()
+                    .id("match-1").requester(requester).receiver(receiver)
+                    .requesterProfile(requesterProfile).targetProfile(targetProfile)
+                    .status(MatchingStatus.PENDING)
+                    .receiverExpiresAt(LocalDateTime.now().plusHours(48))
+                    .build();
+            given(matchingRepository.findById("match-1")).willReturn(Optional.of(pending));
+
+            assertThatThrownBy(() -> matchingService.cancelMatchedMatching("match-1", "user-a", null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+        }
+    }
 }
