@@ -14,6 +14,7 @@ import com.mydestiny.dto.profile.ProfileUpdateRequest;
 import com.mydestiny.service.FollowService;
 import com.mydestiny.global.exception.BusinessException;
 import com.mydestiny.repository.DatingProfileRepository;
+import com.mydestiny.repository.MatchingRepository;
 import com.mydestiny.repository.ProfilePhotoRepository;
 import com.mydestiny.repository.UserRepository;
 import com.mydestiny.util.PhoneEncryptionUtil;
@@ -38,6 +39,7 @@ public class ProfileService {
     private final PhoneEncryptionUtil phoneEncryptionUtil;
     private final com.mydestiny.util.PhoneLookupUtil phoneLookupUtil;
     private final FollowService followService;
+    private final MatchingRepository matchingRepository;
 
     @Transactional
     public ProfileDetailResponse create(String userId, ProfileCreateRequest req) {
@@ -104,12 +106,13 @@ public class ProfileService {
         if (profile.getStatus() != ProfileStatus.PUBLISHED) {
             checkOwner(profile, userId);
         }
+        boolean matched = isMatched(profileId);
         if (profile.isOwnedBy(userId)) {
-            return ProfileDetailResponse.from(profile, decryptSubjectPhone(profile));
+            return ProfileDetailResponse.from(profile, decryptSubjectPhone(profile), matched);
         } else if (profile.isSubject(userId)) {
-            return ProfileDetailResponse.from(profile, null);
+            return ProfileDetailResponse.from(profile, null, matched);
         } else {
-            return ProfileDetailResponse.fromPublic(profile);
+            return ProfileDetailResponse.fromPublic(profile, matched);
         }
     }
 
@@ -127,7 +130,7 @@ public class ProfileService {
                 req.mbti(), req.hobby(), req.introduction(),
                 req.kakaoId(), req.instagramId());
         profileRepository.save(profile);
-        return ProfileDetailResponse.from(profile, decryptSubjectPhone(profile));
+        return ProfileDetailResponse.from(profile, decryptSubjectPhone(profile), isMatched(profileId));
     }
 
     @Transactional
@@ -196,6 +199,12 @@ public class ProfileService {
                 throw new BusinessException("직업을 입력해주세요.", HttpStatus.BAD_REQUEST);
             }
         }
+    }
+
+    // 매칭 성사(MATCHED) 여부 — 요청자/수신자 프로필 어느 쪽이든
+    private boolean isMatched(String profileId) {
+        return matchingRepository.existsByRequesterProfileIdAndStatus(profileId, MatchingStatus.MATCHED)
+                || matchingRepository.existsByTargetProfileIdAndStatus(profileId, MatchingStatus.MATCHED);
     }
 
     private DatingProfile findActive(String profileId) {

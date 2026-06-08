@@ -11,6 +11,7 @@ public record ProfileDetailResponse(
         String registrantNickname,
         String status,
         String visibility,
+        boolean matched,      // 매칭 성사 여부 (MatchingStatus.MATCHED)
         String name,
         Integer age,
         String gender,
@@ -29,15 +30,23 @@ public record ProfileDetailResponse(
         LocalDateTime updatedAt
 ) {
     public static ProfileDetailResponse from(DatingProfile p, String decryptedPhone) {
-        return build(p, p.getKakaoId(), p.getInstagramId(), decryptedPhone);
+        return from(p, decryptedPhone, false);
+    }
+
+    public static ProfileDetailResponse from(DatingProfile p, String decryptedPhone, boolean matched) {
+        return build(p, p.getKakaoId(), p.getInstagramId(), decryptedPhone, matched);
     }
 
     /** 비소유자 공개 조회용 — 연락처·전화번호 제외 */
     public static ProfileDetailResponse fromPublic(DatingProfile p) {
-        return build(p, null, null, null);
+        return fromPublic(p, false);
     }
 
-    private static ProfileDetailResponse build(DatingProfile p, String kakaoId, String instagramId, String subjectPhone) {
+    public static ProfileDetailResponse fromPublic(DatingProfile p, boolean matched) {
+        return build(p, null, null, null, matched);
+    }
+
+    private static ProfileDetailResponse build(DatingProfile p, String kakaoId, String instagramId, String subjectPhone, boolean matched) {
         List<String> photos = p.getPhotos().stream()
                 .map(photo -> photo.getImageUrl())
                 .toList();
@@ -48,6 +57,7 @@ public record ProfileDetailResponse(
                 p.getRegistrant().getNickname(),
                 p.getStatus().name(),
                 p.getVisibility() != null ? p.getVisibility().name() : null,
+                matched,
                 p.getName(),
                 p.getAge(),
                 p.getGender() != null ? p.getGender().getDbValue() : null,
