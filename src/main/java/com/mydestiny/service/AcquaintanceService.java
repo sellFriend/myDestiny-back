@@ -287,8 +287,11 @@ public class AcquaintanceService {
         List<String> profileIds = profiles.stream().map(DatingProfile::getId).toList();
         java.util.Set<String> matchedIds = new java.util.HashSet<>(
                 matchingRepository.findProfileIdsWithStatus(profileIds, MatchingStatus.MATCHED));
+        java.util.Set<String> outgoingIds = new java.util.HashSet<>(
+                matchingRepository.findRequesterProfileIdsWithStatus(profileIds, MatchingStatus.PENDING));
         return profiles.stream()
-                .map(p -> AcquaintanceDetailResponse.from(p, matchedIds.contains(p.getId())))
+                .map(p -> AcquaintanceDetailResponse.from(
+                        p, matchedIds.contains(p.getId()), outgoingIds.contains(p.getId())))
                 .toList();
     }
 
