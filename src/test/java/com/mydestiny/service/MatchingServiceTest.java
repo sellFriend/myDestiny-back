@@ -219,7 +219,7 @@ class MatchingServiceTest {
         }
 
         @Test
-        @DisplayName("V6: 30일 쿨다운 기간이면 409 예외")
+        @DisplayName("V6: 7일 쿨다운 기간이면 409 예외")
         void failV6_cooldown() {
             given(profileRepository.findById("profile-b")).willReturn(Optional.of(requesterProfile));
             given(profileRepository.findById("profile-d")).willReturn(Optional.of(targetProfile));

@@ -20,7 +20,7 @@ public interface MatchingRepository extends JpaRepository<Matching, String> {
     // 일일 요청 횟수 (V12: 5건 한도)
     int countByRequesterIdAndCreatedAtBetween(String requesterId, LocalDateTime start, LocalDateTime end);
 
-    // 동일 프로필 조합의 최근 거절 이력 (V6: 30일 쿨다운 — 수신자 거절 + 당사자 거절 모두 포함)
+    // 동일 프로필 조합의 최근 거절 이력 (V6: 7일 쿨다운 — 수신자 거절 + 당사자 거절 모두 포함)
     @Query("""
             SELECT COUNT(m) > 0 FROM Matching m
             WHERE m.requesterProfile.id = :requesterProfileId
