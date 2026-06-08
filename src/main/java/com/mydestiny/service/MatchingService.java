@@ -89,12 +89,19 @@ public class MatchingService {
                 req.requesterProfileId(), req.targetProfileId(), ACTIVE_STATUSES)) {
             throw new BusinessException("이미 진행 중인 매칭 요청이 있습니다.", HttpStatus.CONFLICT);
         }
-        // 프로필 당 1개 매칭 제한 (B 또는 D가 이미 진행 중이거나 성사된 매칭에 참여)
+        // 두 프로필 중 하나라도 이미 매칭에 점유(성사·확정 진행)된 경우 요청 불가
         if (matchingRepository.isProfileInActiveMatch(req.requesterProfileId(), OCCUPIED_STATUSES)) {
             throw new BusinessException("내 친구 프로필이 이미 다른 매칭에 참여 중입니다.", HttpStatus.CONFLICT);
         }
         if (matchingRepository.isProfileInActiveMatch(req.targetProfileId(), OCCUPIED_STATUSES)) {
             throw new BusinessException("상대 친구 프로필이 이미 다른 매칭에 참여 중입니다.", HttpStatus.CONFLICT);
+        }
+        // 보낸 요청 1건 제한: 내 친구 프로필은 한 번에 한 명에게만 요청 가능 (A→B, A→C 차단)
+        if (matchingRepository.existsByRequesterProfileIdAndStatus(
+                req.requesterProfileId(), MatchingStatus.PENDING)) {
+            throw new BusinessException(
+                    "내 친구 프로필이 이미 다른 매칭 요청을 보낸 상태입니다. 한 번에 한 명에게만 요청할 수 있습니다.",
+                    HttpStatus.CONFLICT);
         }
         // V6: 30일 쿨다운 (수신자 거절 + 당사자 거절 모두 포함)
         if (matchingRepository.existsRecentRejection(
@@ -163,6 +170,9 @@ public class MatchingService {
 
         matchLogRepository.save(MatchLog.of(matching, "RECEIVER", userId, "ACCEPTED",
                 MatchingStatus.PENDING, MatchingStatus.MATCHED));
+
+        // 성사된 두 프로필에 엮인 다른 모든 활성 요청(보낸·받은)을 자동 취소
+        cancelEntangledMatches(matching, userId);
 
         // 요청자(A)와 수신자(C) 모두에게 매칭 성사 알림
         notificationService.create(matching.getRequester().getId(),
@@ -243,6 +253,30 @@ public class MatchingService {
     }
 
     // ────── 헬퍼 ──────
+
+    // 성사된 매칭(matched)의 두 프로필에 엮인 다른 활성 요청을 모두 자동 취소
+    private void cancelEntangledMatches(Matching matched, String actorId) {
+        List<String> profileIds = List.of(
+                matched.getRequesterProfile().getId(),
+                matched.getTargetProfile().getId());
+
+        List<Matching> entangled = matchingRepository.findActiveByProfiles(
+                matched.getId(), profileIds, ACTIVE_STATUSES);
+
+        for (Matching m : entangled) {
+            MatchingStatus prev = m.getStatus();
+            m.autoCancel("다른 매칭 성사로 자동 취소되었습니다.");
+            matchingRepository.save(m);
+
+            matchLogRepository.save(MatchLog.of(m, "SYSTEM", actorId, "AUTO_CANCELLED",
+                    prev, MatchingStatus.CANCELLED));
+
+            notificationService.create(m.getRequester().getId(),
+                    NotificationType.MATCH_CANCELLED, m.getId());
+            notificationService.create(m.getReceiver().getId(),
+                    NotificationType.MATCH_CANCELLED, m.getId());
+        }
+    }
 
     private Matching findWithAccessCheck(String matchingId, String userId) {
         Matching matching = matchingRepository.findById(matchingId)

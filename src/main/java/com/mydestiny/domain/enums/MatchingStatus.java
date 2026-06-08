@@ -14,9 +14,8 @@ public enum MatchingStatus {
     CONSENT_EXPIRED,             // 당사자 동의 기한 초과
     MATCHED;                     // 양쪽 모두 동의, 매칭 성사
 
-    // 프로필 점유 상태: 진행 중 매칭 + 성사된 매칭 (한 프로필은 동시에 하나의 매칭만)
+    // 프로필 점유 상태: 성사 또는 성사 직전 확정 단계 (PENDING은 제외 — 여러 요청을 동시에 받을 수 있음)
     public static final List<MatchingStatus> OCCUPIED = List.of(
-            PENDING,
             ACCEPTED_BY_RECEIVER,
             CONSENT_PENDING,
             CONSENT_PARTIALLY_APPROVED,

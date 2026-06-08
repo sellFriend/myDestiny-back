@@ -303,7 +303,8 @@ CREATE TABLE notifications (
         'matched',
         'match_request_expired',
         'match_consent_expired',
-        'edit_requested'
+        'edit_requested',
+        'match_cancelled'
     ) NOT NULL,
     matching_id   CHAR(36),
     consent_id    VARCHAR(36) NULL,
