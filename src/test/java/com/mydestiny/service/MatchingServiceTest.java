@@ -7,6 +7,7 @@ import com.mydestiny.domain.MatchLog;
 import com.mydestiny.domain.User;
 import com.mydestiny.domain.enums.ConsentStatus;
 import com.mydestiny.domain.enums.MatchingStatus;
+import com.mydestiny.domain.enums.NotificationType;
 import com.mydestiny.domain.enums.ProfileStatus;
 import com.mydestiny.domain.enums.Role;
 import com.mydestiny.dto.matching.MatchingRequest;
@@ -202,6 +203,22 @@ class MatchingServiceTest {
         }
 
         @Test
+        @DisplayName("보낸 요청 1건 제한: 내 친구 프로필이 이미 요청을 보낸 상태면 409 예외 (A→B, A→C 차단)")
+        void failOutgoingRequestLimit() {
+            given(profileRepository.findById("profile-b")).willReturn(Optional.of(requesterProfile));
+            given(profileRepository.findById("profile-d")).willReturn(Optional.of(targetProfile));
+            given(matchingRepository.existsActiveMatchBetween(anyString(), anyString(), anyList())).willReturn(false);
+            given(matchingRepository.isProfileInActiveMatch(anyString(), anyList())).willReturn(false);
+            // 내 친구 프로필(B)이 이미 다른 PENDING 요청을 보낸 상태
+            given(matchingRepository.existsByRequesterProfileIdAndStatus("profile-b", MatchingStatus.PENDING))
+                    .willReturn(true);
+
+            assertThatThrownBy(() -> matchingService.createMatching("user-a", validRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
         @DisplayName("V6: 30일 쿨다운 기간이면 409 예외")
         void failV6_cooldown() {
             given(profileRepository.findById("profile-b")).willReturn(Optional.of(requesterProfile));
@@ -260,6 +277,31 @@ class MatchingServiceTest {
             assertThat(result.status()).isEqualTo(MatchingStatus.MATCHED.name());
             verify(notificationService).create(eq("user-a"), any(), any());
             verify(notificationService).create(eq("user-c"), any(), any());
+        }
+
+        @Test
+        @DisplayName("성사 시 두 프로필에 엮인 다른 활성 요청들이 자동 취소되고 양측에 알림 발송")
+        void cancelsEntangledMatchesOnAccept() {
+            Matching matching = pendingMatching();
+            // B(profile-b)에게 다른 사용자가 보낸 또 다른 PENDING 요청
+            Matching entangled = Matching.builder()
+                    .id("match-2").requester(candidateB).receiver(requester)
+                    .requesterProfile(targetProfile).targetProfile(requesterProfile)
+                    .status(MatchingStatus.PENDING)
+                    .receiverExpiresAt(LocalDateTime.now().plusHours(48))
+                    .build();
+
+            given(matchingRepository.findById("match-1")).willReturn(Optional.of(matching));
+            given(matchingRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(matchLogRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(matchingRepository.findActiveByProfiles(eq("match-1"), anyList(), anyList()))
+                    .willReturn(List.of(entangled));
+
+            matchingService.acceptMatching("match-1", "user-c");
+
+            assertThat(entangled.getStatus()).isEqualTo(MatchingStatus.CANCELLED);
+            verify(notificationService).create(eq("user-b"), eq(NotificationType.MATCH_CANCELLED), eq("match-2"));
+            verify(notificationService).create(eq("user-a"), eq(NotificationType.MATCH_CANCELLED), eq("match-2"));
         }
 
         @Test

@@ -113,6 +113,12 @@ public class Matching {
         this.cancelReason = reason;
     }
 
+    // 다른 매칭이 성사되어 엮인 요청이 시스템에 의해 자동 취소될 때 (진행 중 상태에서 호출)
+    public void autoCancel(String reason) {
+        this.status = MatchingStatus.CANCELLED;
+        this.cancelReason = reason;
+    }
+
     // acceptByReceiver() 직후 트랜잭션 내에서 호출
     public void transitionToConsentPending() {
         if (status != MatchingStatus.ACCEPTED_BY_RECEIVER) {
