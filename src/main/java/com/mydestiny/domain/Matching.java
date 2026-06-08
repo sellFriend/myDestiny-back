@@ -113,6 +113,16 @@ public class Matching {
         this.cancelReason = reason;
     }
 
+    // 성사된 매칭을 당사자(요청자/수신자)가 취소 — MATCHED 상태에서만 가능
+    public void cancelAfterMatch(User by, String reason) {
+        if (status != MatchingStatus.MATCHED) {
+            throw new IllegalStateException("성사된(MATCHED) 매칭만 취소할 수 있습니다.");
+        }
+        this.status = MatchingStatus.CANCELLED_AFTER_MATCH;
+        this.cancelledBy = by;
+        this.cancelReason = reason;
+    }
+
     // 다른 매칭이 성사되어 엮인 요청이 시스템에 의해 자동 취소될 때 (진행 중 상태에서 호출)
     public void autoCancel(String reason) {
         this.status = MatchingStatus.CANCELLED;

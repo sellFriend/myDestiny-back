@@ -216,6 +216,37 @@ public class MatchingService {
                 MatchingStatus.PENDING, MatchingStatus.CANCELLED));
     }
 
+    // 성사(MATCHED)된 매칭을 당사자(요청자 또는 수신자)가 취소
+    public MatchingResponse cancelMatchedMatching(String matchingId, String userId, String reason) {
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new BusinessException("매칭을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+
+        boolean isRequester = matching.getRequester().getId().equals(userId);
+        boolean isReceiver = matching.getReceiver().getId().equals(userId);
+        if (!isRequester && !isReceiver) {
+            throw new BusinessException("접근 권한이 없습니다.", HttpStatus.FORBIDDEN);
+        }
+        if (matching.getStatus() != MatchingStatus.MATCHED) {
+            throw new BusinessException("성사된 매칭만 취소할 수 있습니다.", HttpStatus.CONFLICT);
+        }
+
+        User actor = isRequester ? matching.getRequester() : matching.getReceiver();
+        matching.cancelAfterMatch(actor, reason);
+        matchingRepository.save(matching);
+
+        matchLogRepository.save(MatchLog.of(matching,
+                isRequester ? "REQUESTER" : "RECEIVER", userId, "CANCELLED_AFTER_MATCH",
+                MatchingStatus.MATCHED, MatchingStatus.CANCELLED_AFTER_MATCH));
+
+        // 취소한 본인을 제외한 상대방에게 매칭 해제 알림
+        String counterpartId = isRequester
+                ? matching.getReceiver().getId()
+                : matching.getRequester().getId();
+        notificationService.create(counterpartId, NotificationType.MATCH_RELEASED, matching.getId());
+
+        return MatchingResponse.from(matching);
+    }
+
     @Transactional(readOnly = true)
     public List<MatchingResponse> getMatchedMatchings(String userId) {
         return matchingRepository.findMatchedByUserId(userId, MatchingStatus.MATCHED)
