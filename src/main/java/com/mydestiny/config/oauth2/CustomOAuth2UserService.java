@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -20,7 +21,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
 
     @Override
-    @Transactional
+    // READ_COMMITTED 로 내려 동시 로그인 시 'Record has changed'(MariaDB 1020) 충돌을 방지한다.
+    // REPEATABLE READ 에서는 findByKakaoId 가 스냅샷을 확정한 뒤 touchLogin UPDATE 사이에
+    // 다른 로그인 트랜잭션이 같은 row 를 커밋하면 snapshot isolation 이 UPDATE 를 거부한다.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
